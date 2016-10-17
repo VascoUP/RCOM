@@ -7,19 +7,19 @@ include ...
 #define TRANSMITTER 0   //flag that indicate that this is the transmitter
 #define RECEIVER    1   //flag that indicate that this is the receiver
 
-typedef applicationLayer {
+typedef struct {
     int fileDescriptor;
     int status;         //TRANSMITTER | RECEIVER
-} struct;
+} applicationLayer;
 
-typedef linklayer {
+typedef struct {
     char port[20];                  //indentifier for the serial port
     int baudrate;                   //transmition rate
     unsigned int sequenceNumber;    //value = 0 | 1 ( alternate bettween each other )
     unsigned int timeOut;           //wait time before resending package
     unsigned int numTransmissions;  //maximum number of repeated transmissions
     char frame[MAX_SIZE];           //image to be sent
-} struct;
+} linklayer;
 
 int llopen(int porta, int status) {
     /*
@@ -47,4 +47,8 @@ int llwrite() {
     ...
     */
     return 0; //return # characters written | -1 if error
+}
+
+int main(int argc, char* argv[]) {
+    return 0;
 }
