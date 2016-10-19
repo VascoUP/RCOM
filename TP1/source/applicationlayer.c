@@ -7,6 +7,9 @@ typedef struct {
     int status;         //TRANSMITTER | RECEIVER
 } applicationLayer;
 
+int handleMessage(int length, char msg[]) {
+	return 0;
+}
 
 int main(int argc, char **argv) {
 

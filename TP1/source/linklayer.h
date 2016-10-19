@@ -1,9 +1,19 @@
 
-#define MAX_SIZE    255 //buffer's maximum size
-#define BAUDRATE	B9600 //
+#define BIT(n)		0x01 << n
 
-#define TRANSMITTER 0   //flag that indicate that this is the transmitter
-#define RECEIVER    1   //flag that indicate that this is the receiver
+#define BYTE_FLAG	0x7E
+#define BYTE_A		0x03
+#define BYTE_C_SET	0x03
+#define BYTE_C_UA	0x07
+#define BYTE_C_DISC	0x0B
+#define BYTE_C_RR	0x05
+#define BYTE_C_REJ	0x01		
+
+#define MAX_SIZE    255 	//buffer's maximum size
+#define BAUDRATE	B9600 	//
+
+#define TRANSMITTER 0   	//flag that indicate that this is the transmitter
+#define RECEIVER    1   	//flag that indicate that this is the receiver
 
 typedef struct {
     char port[20];                  //indentifier for the serial port
