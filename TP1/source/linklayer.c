@@ -12,7 +12,9 @@
 static linklayer ll;
 static struct termios oldtio;
 
-static int open_serial(int porta); // return fd or -1 on error
+static int open_serial(int porta); 
+static int close_serial(int fd);
+static int write_serial(int fd, char msg[], int length);
 
 int llopen(int porta, int status) {
 
@@ -53,12 +55,12 @@ static int open_serial(int porta) {
         return -1;
     }
 
-    linklayer.baudrate = BAUDRATE;
-    if (sprintf(linklayer.port, "/dev/ttyS%d", porta) < 0) {
+    ll.baudrate = BAUDRATE;
+    if (sprintf(ll.port, "/dev/ttyS%d", porta) < 0) {
         return -1;
     }
     
-    fd = open(linklayer.port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    fd = open(ll.port, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd < 0) {
         return -1;
     }
@@ -68,7 +70,7 @@ static int open_serial(int porta) {
     }
     
     bzero(&newtio, sizeof(newtio));
-    newtio.c_cflag = linklayer.baudrate | CS8 | CLOCAL | CREAD;
+    newtio.c_cflag = ll.baudrate | CS8 | CLOCAL | CREAD;
     newtio.c_iflag = IGNPAR;
     newtio.c_oflag = 0;
 
@@ -84,4 +86,29 @@ static int open_serial(int porta) {
     }
 
     return fd;
+}
+
+static int close_serial(int fd) {
+    if (tcsetattr(fd, TCSANOW, &oldtio) == -1) {
+        return -1;
+    }
+    close(fd);
+    return 0;
+}
+
+static int write_serial(int fd, char msg[], int length) {
+    int nw = 0;
+    nw = write(fd, msg, length);
+    while (length > nw) {
+        int n;
+        n = write(fd, msg+nw, length-nw);
+        if (n == -1) {
+            return -1;
+        }
+        else if (!n) {
+            break;
+        }
+        nw += n;
+    }
+    return 0;
 }
