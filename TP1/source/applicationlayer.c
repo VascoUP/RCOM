@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 
 	info.fileDescriptor = llopen( port, info.status );
 	if( info.fileDescriptor < 0 ) {
-		printf("Erro ao abrir o ficheiro\n");
+		printf("Erro ao abrir a porta de série\n");
 		return -1;
 	}
 

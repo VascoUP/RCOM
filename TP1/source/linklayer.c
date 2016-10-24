@@ -100,7 +100,10 @@ int handleMessage(int length, unsigned char msg[]) {
 
 int llopen(int porta, int status) {
     int fd;
-	if((fd = open_serial(porta)) == -1) return -1; //Retornar logo se der erro
+	if((fd = open_serial(porta)) == -1)  {
+		printf("Erro open_serial\n");
+		return -1; //Retornar logo se der erro
+	}
 
 	struct sigaction actionAlarm;
 	actionAlarm.sa_handler = atende;
@@ -184,12 +187,14 @@ int open_serial(int porta) {
     int fd;
     struct termios newtio;
 
-    if (porta != 0 || porta != 1) {
+    if (porta != 0 && porta != 1) {
+		printf("Numero errado da porta\n");
         return -1;
     }
 
     ll.baudrate = BAUDRATE;
     if (sprintf(ll.port, "/dev/ttyS%d", porta) < 0) {
+		printf("Erro ao criar string da porta\n");
         return -1;
     }
 
@@ -199,10 +204,12 @@ int open_serial(int porta) {
     
     fd = open(ll.port, O_RDWR | O_NOCTTY);
     if (fd < 0) {
+		printf("Erro ao abrir fd\n");
         return -1;
     }
 
     if (tcgetattr(fd, &oldtio) == -1) {
+		printf("Erro ao aceder aos atributos\n");
         return -1;
     }
     
@@ -219,6 +226,7 @@ int open_serial(int porta) {
     tcflush(fd, TCIOFLUSH);
 
     if (tcsetattr(fd, TCSANOW, &newtio) == -1) {
+		printf("Erro ao alterar os atributos\n");
         return -1;
     }
 
