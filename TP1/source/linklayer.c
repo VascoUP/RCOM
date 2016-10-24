@@ -12,7 +12,7 @@
 
 static linklayer ll;
 static struct termios oldtio;
-static int flag = 0;
+static int flag = 1;
 static int counter = 0;
 
 static int open_serial(int porta); 
@@ -111,7 +111,7 @@ int llopen(int porta, int status) {
 	actionAlarm.sa_flags = 0;
 
 	if(sigaction(SIGALRM, &actionAlarm, NULL) < 0){
-		fprintf(stderr, "¡ei o vasco e gay!\n");
+		fprintf(stderr, "Error activating the alarm\n");
 		return -1;
 	}
 
