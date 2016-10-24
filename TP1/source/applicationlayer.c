@@ -1,6 +1,7 @@
 
 #include "linklayer.h"
 #include <string.h>
+#include <stdio.h>
 
 typedef struct {
     int fileDescriptor;
@@ -13,15 +14,19 @@ int main(int argc, char **argv) {
 	int port;
 
 	if( strcmp("receiver", argv[1])==0 ) { 
-		if( argc != 3 )
+		if( argc != 3 ) {
+			printf("1 - Falta argumentos\n");
 			return -1;
+		}
 
 		info.status = RECEIVER;
 
 	}
 	else if( strcmp("transmitter", argv[1])==0 ) { 
-		if( argc != 4 )
+		if( argc != 4 ) {
+			printf("2 - Falta argumentos\n");
 			return -1;
+		}
 
 		info.status = TRANSMITTER;
 
@@ -33,12 +38,16 @@ int main(int argc, char **argv) {
 		port = 0;
 	else if( strcmp("/dev/ttyS1", argv[2])==0 )
 		port = 1;
-	else
+	else {
+		printf("Porta nao existente\n");
 		return -1;
+	}
 
 	info.fileDescriptor = llopen( port, info.status );
-	if( info.fileDescriptor < 0 )
+	if( info.fileDescriptor < 0 ) {
+		printf("Erro ao abrir o ficheiro\n");
 		return -1;
+	}
 
 	int count = 0;
 	do {
