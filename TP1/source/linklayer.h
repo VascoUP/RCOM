@@ -23,7 +23,7 @@
 #define TRAMA_RR    4
 #define TRAMA_REJ   5
 
-#define MAX_SIZE    255     //buffer's maximum size
+#define MAX_LEN		255     //buffer's maximum size
 #define BAUDRATE    B9600   
 
 #define TRANSMITTER 0       //flag that indicate that this is the transmitter
@@ -32,10 +32,10 @@
 typedef struct {
     char port[20];                  //indentifier for the serial port
     int baudrate;                   //transmition rate
-    unsigned int sequenceNumber;    //value = 0 | 1 ( alternate bettween each other )
+    unsigned int sequenceNumber;   	//value = 0 | 1 ( alternate bettween each other )
     unsigned int timeOut;           //wait time before resending package
-    unsigned int numTransmissions;  //maximum number of repeated transmissions
-    char frame[MAX_SIZE];           //image to be sent
+    unsigned int numTransmissions; 	//maximum number of repeated transmissions
+    unsigned char frame[MAX_LEN];  	//image to be sent
 } linklayer;
 
 int llopen(int porta, int status);

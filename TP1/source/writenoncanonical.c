@@ -167,7 +167,15 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
-    (void) signal(SIGALRM, atende); 
+	struct sigaction actionAlarm;
+	actionAlarm.sa_handler = atende;
+	sigemptyset(&actionAlarm.sa_mask);
+	actionAlarm.sa_flags = 0;
+
+	if(sigaction(SIGALRM, &actionAlarm, NULL) < 0){
+		fprintf(stderr, "¡ei o vasco e gay!\n");
+		exit(-1);
+	}
 
     /*
         Escrever o SET para a porta de serie
