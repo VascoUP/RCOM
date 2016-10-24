@@ -5,11 +5,14 @@
 #define BYTE_FLAG   0x7E
 #define BYTE_A      0x03
 #define BYTE_C_I    0x00
+#define BYTE_C_I2	0x40
 #define BYTE_C_SET  0x03
 #define BYTE_C_UA   0x07
 #define BYTE_C_DISC 0x0B
 #define BYTE_C_RR   0x05
+#define BYTE_C_RR2	0x85
 #define BYTE_C_REJ  0x01
+#define BYTE_C_REJ2	0x81
 
 /* Macros used to identify the type of message */
 #define ERR         -1
