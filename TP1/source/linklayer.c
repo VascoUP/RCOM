@@ -15,8 +15,8 @@ static struct termios oldtio;
 static int flag = 1;
 static int counter = 0;
 
-static int handleMessage(int length, unsigned char msg[]);
-static int open_serial(int porta); 
+static int handleMessage(int length, unsigned char msg[], int type_a);
+static int open_serial(int porta, int status); 
 static int close_serial(int fd);
 static int write_serial(int fd, unsigned char msg[], int length);
 static int read_serial(int fd, unsigned char *buf);
@@ -27,7 +27,7 @@ void atende() {
 }
 
 // !!NOT FINISHED!!
-int handleMessage(int length, unsigned char msg[]) {
+int handleMessage(int length, unsigned char msg[], int type_a) {
 	int i, type = UNDEFINED;
 	unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
 	for( i = 0; i < length; i++ ) {
@@ -39,7 +39,7 @@ int handleMessage(int length, unsigned char msg[]) {
 			}
 		//Campo de endereco (tem de vir logo a seguir à primeira Flag)
 		} else if( a == 0 && i > 0 && msg[i-1] == f1 ) {
-			if( msg[i] == BYTE_AT || msg[i] == BYTE_AR ) {
+			if( (msg[i] == BYTE_AT && type_a == A_T) || (msg[i] == BYTE_AR && type_a == A_R) ) {
 				printf("1 FLAG: %x\n", msg[i]);
 				a = msg[i];
 			}
@@ -113,7 +113,7 @@ int handleMessage(int length, unsigned char msg[]) {
 
 int llopen(int porta, int status) {
     int fd;
-	if((fd = open_serial(porta)) == -1)  {
+	if((fd = open_serial(porta, status)) == -1)  {
 		printf("Erro open_serial\n");
 		return -1; //Retornar logo se der erro
 	}
@@ -131,7 +131,7 @@ int llopen(int porta, int status) {
 	unsigned char buffer[MAX_LEN];
 	int k;
 
-	if( status == TRANSMITTER ) {
+	if( ll.status == TRANSMITTER ) {
 		unsigned char set[5];
 		set[0] = BYTE_FLAG;
 		set[1] = BYTE_AT;
@@ -144,7 +144,7 @@ int llopen(int porta, int status) {
 		    alarm(ll.timeOut);
 		    flag = 0;
 		    if( ( k = read_serial(fd, buffer) ) != -1 ) {
-				if( handleMessage(k, buffer) == TRAMA_UA ) {
+				if( handleMessage(k, buffer, A_T) == TRAMA_UA ) {
 					printf("Recebeu mensagem, kappa\n");
 					break;
 				} else {
@@ -153,15 +153,18 @@ int llopen(int porta, int status) {
 				}
 			}
 		}
-		
 		if (counter == ll.numTransmissions)
-			printf("Maximum number of transmissions\n");		
+			printf("Maximum number of transmissions\n");
+		
+		flag = 1;
+		counter = 0;	
+		
 	} else {
 		do {
 			k = read_serial(fd, buffer);
 			if( k == -1 )
 				return -1;
-		} while( handleMessage(k, buffer) != TRAMA_SET );
+		} while( handleMessage(k, buffer, A_T) != TRAMA_SET );
 
 		unsigned char ua[5];
 		ua[0] = BYTE_FLAG;
@@ -177,7 +180,63 @@ int llopen(int porta, int status) {
 }
 
 int llclose(int fd) {
+	
+	int k;
+	unsigned char buffer[MAX_LEN];
+	unsigned char disc[5];
+	unsigned char ua[5];
+	
+	disc[0] = BYTE_FLAG;
+	disc[1] = BYTE_AT;
+	disc[2] = BYTE_C_DISC;
+	disc[3] = BYTE_AT ^ BYTE_C_DISC;
+	disc[4] = BYTE_FLAG;		
+	
+	ua[0] = BYTE_FLAG;
+	ua[1] = BYTE_AR;	//Emissor will be sending UA as a response
+	ua[2] = BYTE_C_UA;
+	ua[3] = BYTE_AT ^ BYTE_C_UA;
+	ua[4] = BYTE_FLAG;
 
+	if( ll.status == TRANSMITTER ) {
+
+		while(flag && counter < ll.numTransmissions) {    
+			if( write_serial(fd, disc, 5) == -1 ) return -1;
+			alarm(ll.timeOut);
+			flag = 0;
+			if( ( k = read_serial(fd, buffer) ) != -1 ) {
+				if( handleMessage(k, buffer, A_T) == TRAMA_DISC ) {
+					printf("Recebeu mensagem, kappa disc\n");
+					break;
+				} else {
+					counter++;
+					flag = 1;
+				}
+			}
+		}
+		
+		do {
+			k = write_serial(fd, ua, 5); //return -1;
+			counter++;
+		} while(counter < ll.numTransmissions && k > 0);
+		
+	} else {
+		do {
+			k = read_serial(fd, buffer);
+			if( k == -1 )
+				return -1;
+		} while( handleMessage(k, buffer, A_T) != TRAMA_DISC );
+
+		write_serial(fd, disc, 5);
+
+		do {
+			k = read_serial(fd, buffer);
+			if( k == -1 )
+				return -1;
+		} while( handleMessage(k, buffer, A_R) != TRAMA_UA );
+		
+		printf("Recebeu mensagem, kappa fabullous!\n");
+	}
 	/* Dependendo do status vai-se enviar (TRANSMITTER) ou receber (RECIEVER) uma mensagem */
 	return close_serial(fd);
 
@@ -197,7 +256,7 @@ int llwrite(int fd, char * buffer, int length) {
     return 0; //return # characters written | -1 if error
 }
 
-int open_serial(int porta) {
+int open_serial(int porta, int status) {
     int fd;
     struct termios newtio;
 
@@ -211,7 +270,8 @@ int open_serial(int porta) {
 		printf("Erro ao criar string da porta\n");
         return -1;
     }
-
+    
+	ll.status = status;
     ll.sequenceNumber = 0;
     ll.timeOut = 3;
     ll.numTransmissions = 3;

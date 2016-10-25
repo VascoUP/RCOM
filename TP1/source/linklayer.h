@@ -26,6 +26,9 @@
 #define TRAMA_RR    4
 #define TRAMA_REJ   5
 
+#define A_T			0
+#define A_R			1
+
 #define MAX_LEN		255     //buffer's maximum size
 #define BAUDRATE    B9600   
 
@@ -33,6 +36,7 @@
 #define RECEIVER    1       //flag that indicate that this is the receiver
 
 typedef struct {
+	int status;
     char port[20];                  //indentifier for the serial port
     int baudrate;                   //transmition rate
     unsigned int sequenceNumber;   	//value = 0 | 1 ( alternate bettween each other )
