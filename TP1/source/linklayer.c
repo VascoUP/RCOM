@@ -34,13 +34,13 @@ int handleMessage(int length, unsigned char msg[], int type_a) {
 		//Flag - 1 
 		if( f1 == 0 ) {
 			if( msg[i] == BYTE_FLAG ) {
-				printf("0 FLAG: %x\n", msg[i]); 
+				printf("0 FLAG: 0x%x\n", msg[i]); 
 				f1 = msg[i];
 			}
 		//Campo de endereco (tem de vir logo a seguir à primeira Flag)
 		} else if( a == 0 && i > 0 && msg[i-1] == f1 ) {
 			if( (msg[i] == BYTE_AT && type_a == A_T) || (msg[i] == BYTE_AR && type_a == A_R) ) {
-				printf("1 FLAG: %x\n", msg[i]);
+				printf("1 FLAG: 0x%x\n", msg[i]);
 				a = msg[i];
 			}
 			else //Se nao for o campo de endereco returnar erro
@@ -78,12 +78,13 @@ int handleMessage(int length, unsigned char msg[], int type_a) {
 				default: //Se nenhum deles corresponder a um campo de controlo valido 
 					return ERR;
 			}
-			printf("2 FLAG: %x\n", msg[i]);
+			printf("2 FLAG: 0x%x\n", msg[i]);
 			c = msg[i];
+			printf("0x%x - 0x%x\n", a, c);
 		//Campo de protecao (tem de vir antes do campo de controlo)
 		} else if( msg[i-1] == c ) {
 			if( (a ^ c) == msg[i] ) {
-				printf("3 FLAG: %x\n", msg[i]);
+				printf("3 FLAG: 0x%x\n", msg[i]);
 				bcc1 = msg[i];
 			}
 			else
@@ -91,7 +92,7 @@ int handleMessage(int length, unsigned char msg[], int type_a) {
 		//Flag - 2 (tem de vir antes do campo de protecao
 		//				MENOS quando se trata de uma trama I)
 		} else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc1 &&  bcc2 == 0 ) {
-			printf("4 FLAG: %x\n", msg[i]);
+			printf("4 FLAG: 0x%x\n", msg[i]);
 			if( type != TRAMA_I )
 				return type;
 			else
@@ -136,7 +137,7 @@ int llopen(int porta, int status) {
 		set[0] = BYTE_FLAG;
 		set[1] = BYTE_AT;
 		set[2] = BYTE_C_SET;
-		set[3] = BYTE_AT ^ BYTE_C_SET;
+		set[3] = set[1] ^ set[2];
 		set[4] = BYTE_FLAG;
 
 		while(flag && counter < ll.numTransmissions) {    
@@ -170,7 +171,7 @@ int llopen(int porta, int status) {
 		ua[0] = BYTE_FLAG;
 		ua[1] = BYTE_AT;
 		ua[2] = BYTE_C_UA;
-		ua[3] = BYTE_AT ^ BYTE_C_UA;
+		ua[3] = ua[1] ^ ua[2];
 		ua[4] = BYTE_FLAG;
 		write_serial(fd, ua, 5);
 		printf("Recebeu mensagem, kappa fabullous!\n");
@@ -189,13 +190,13 @@ int llclose(int fd) {
 	disc[0] = BYTE_FLAG;
 	disc[1] = BYTE_AT;
 	disc[2] = BYTE_C_DISC;
-	disc[3] = BYTE_AT ^ BYTE_C_DISC;
+	disc[3] = disc[1] ^ disc[2];
 	disc[4] = BYTE_FLAG;		
 	
 	ua[0] = BYTE_FLAG;
 	ua[1] = BYTE_AR;	//Emissor will be sending UA as a response
 	ua[2] = BYTE_C_UA;
-	ua[3] = BYTE_AT ^ BYTE_C_UA;
+	ua[3] = ua[1] ^ ua[2];
 	ua[4] = BYTE_FLAG;
 
 	if( ll.status == TRANSMITTER ) {
