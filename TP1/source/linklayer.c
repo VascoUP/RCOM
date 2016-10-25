@@ -172,8 +172,7 @@ int llopen(int porta, int status) {
 		write_serial(fd, ua, 5);
 		printf("Recebeu mensagem, kappa fabullous!\n");
 	}
-
-	/* Dependendo do status vai-se enviar (TRANSMITTER) ou receber (RECEIVER) uma mensagem */
+	
 	return fd;
 }
 
