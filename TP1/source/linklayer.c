@@ -15,6 +15,7 @@ static struct termios oldtio;
 static int flag = 1;
 static int counter = 0;
 
+static int handleMessage(int length, unsigned char msg[]);
 static int open_serial(int porta); 
 static int close_serial(int fd);
 static int write_serial(int fd, unsigned char msg[], int length);
@@ -27,22 +28,25 @@ void atende() {
 
 // !!NOT FINISHED!!
 int handleMessage(int length, unsigned char msg[]) {
-	int i, type = -2;
-	unsigned char f1 = '\0', a = '\0', c = '\0', bcc1 = '\0', bcc2 = '\0';
+	int i, type = UNDEFINED;
+	unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
 	for( i = 0; i < length; i++ ) {
-		if( f1 == '\0' ) {
+		//Flag - 1 
+		if( f1 == 0 ) {
 			if( msg[i] == BYTE_FLAG ) {
 				printf("0 FLAG: %x\n", msg[i]); 
 				f1 = msg[i];
 			}
-		} else if( a == '\0' && i > 0 && msg[i-1] == f1 ) {
-			if( msg[i] == BYTE_A ) {
+		//Campo de endereco (tem de vir logo a seguir à primeira Flag)
+		} else if( a == 0 && i > 0 && msg[i-1] == f1 ) {
+			if( msg[i] == BYTE_AT || msg[i] == BYTE_AR ) {
 				printf("1 FLAG: %x\n", msg[i]);
 				a = msg[i];
 			}
-			else
+			else //Se nao for o campo de endereco returnar erro
 				return ERR;
-		} else if( i > 0 && msg[i-1] == a && type == -2 ) {
+		//Campo de controlo (tem de vir logo a seguir ao campo de endereco)
+		} else if( msg[i-1] == a && type == UNDEFINED ) {
 			switch( msg[i] ) {
 				case BYTE_C_I:
 				case BYTE_C_I2:
@@ -71,36 +75,37 @@ int handleMessage(int length, unsigned char msg[]) {
 					type = TRAMA_REJ;
 					printf("Trama REJ\n");
 					break;
-				default:
+				default: //Se nenhum deles corresponder a um campo de controlo valido 
 					return ERR;
 			}
 			printf("2 FLAG: %x\n", msg[i]);
 			c = msg[i];
-		} else if( i > 0 && msg[i-1] == c ) {
+		//Campo de protecao (tem de vir antes do campo de controlo)
+		} else if( msg[i-1] == c ) {
 			if( (a ^ c) == msg[i] ) {
 				printf("3 FLAG: %x\n", msg[i]);
-				bcc2 = msg[i];
+				bcc1 = msg[i];
 			}
 			else
 				return ERR;
-		} else if( i > 0 && msg[i-1] == bcc2 ) {
-			if( msg[i] == BYTE_FLAG ) {
-				printf("4 FLAG: %x\n", msg[i]);
-				if( type != TRAMA_I )
-					return type;
-				else
-					return ERR;
-			} else if( msg[i] != BYTE_FLAG ) {
-				if( type != TRAMA_I )
-					return ERR;
-			}
-		} else if( bcc1 != '\0' && msg[i] == bcc1 && type == TRAMA_I ) {
+		//Flag - 2 (tem de vir antes do campo de protecao
+		//				MENOS quando se trata de uma trama I)
+		} else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc1 &&  bcc2 == 0 ) {
+			printf("4 FLAG: %x\n", msg[i]);
+			if( type != TRAMA_I )
+				return type;
+			else
+				return ERR;
+		}
+		//Segundo campo de protecao (so valido para tramas I)
+		/*} else if( bcc1 != 0 && msg[i] == bcc1 && msg[i-1] != bcc1 && type == TRAMA_I ) {
 			printf("5 FLAG: %x\n", msg[i]);
 			bcc2 = msg[i];
-		} else if( i > 0 && msg[i-1] == bcc2 && type == TRAMA_I ) {
+		//Flag - 2 (so valido 
+		} else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc2 && type == TRAMA_I ) {
 			printf("%d\n", type);
 			return type;
-		}
+		}*/
 	}
 
 	return -1;
@@ -129,9 +134,9 @@ int llopen(int porta, int status) {
 	if( status == TRANSMITTER ) {
 		unsigned char set[5];
 		set[0] = BYTE_FLAG;
-		set[1] = BYTE_A;
+		set[1] = BYTE_AT;
 		set[2] = BYTE_C_SET;
-		set[3] = BYTE_A ^ BYTE_C_SET;
+		set[3] = BYTE_AT ^ BYTE_C_SET;
 		set[4] = BYTE_FLAG;
 
 		while(flag && counter < ll.numTransmissions) {    
@@ -160,9 +165,9 @@ int llopen(int porta, int status) {
 
 		unsigned char ua[5];
 		ua[0] = BYTE_FLAG;
-		ua[1] = BYTE_A;
+		ua[1] = BYTE_AT;
 		ua[2] = BYTE_C_UA;
-		ua[3] = BYTE_A ^ BYTE_C_UA;
+		ua[3] = BYTE_AT ^ BYTE_C_UA;
 		ua[4] = BYTE_FLAG;
 		write_serial(fd, ua, 5);
 		printf("Recebeu mensagem, kappa fabullous!\n");

@@ -1,9 +1,12 @@
 
 #define BIT(n)      0x01 << n
 
+#define UNDEFINED	-2
+
 /* Macros to identify a byte of the message */
 #define BYTE_FLAG   0x7E
-#define BYTE_A      0x03
+#define BYTE_AT     0x03
+#define BYTE_AR     0x01
 #define BYTE_C_I    0x00
 #define BYTE_C_I2	0x40
 #define BYTE_C_SET  0x03
