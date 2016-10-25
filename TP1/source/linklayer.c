@@ -238,7 +238,7 @@ int llclose(int fd) {
 		
 		printf("Recebeu mensagem, kappa fabullous!\n");
 	}
-	/* Dependendo do status vai-se enviar (TRANSMITTER) ou receber (RECIEVER) uma mensagem */
+	
 	return close_serial(fd);
 
 }
