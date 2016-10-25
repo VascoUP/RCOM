@@ -79,7 +79,7 @@ int handleMessage(int length, unsigned char msg[]) {
 		} else if( i > 0 && msg[i-1] == c ) {
 			if( (a ^ c) == msg[i] ) {
 				printf("3 FLAG: %x\n", msg[i]);
-				bcc1 = msg[i];
+				bcc2 = msg[i];
 			}
 			else
 				return ERR;
@@ -270,19 +270,13 @@ int write_serial(int fd, unsigned char msg[], int length) {
 }
 
 int read_serial(int fd, unsigned char *buf) {
-    /* Ler UA */
     int hasFirst = 0, nfr = 0;
     int iter = 0;            
     int k;
     while(1) {
         int n = 0;
-        do {
-        	printf("Waiting...\n");
-            n = read(fd, buf, MAX_LEN - nfr);
-            if( n == -1 )
-            	return -1;
-            	
-        } while( flag == 0 );
+        
+        n = read(fd, buf, MAX_LEN - nfr);
         
         if( n <= 0 )
             return -1;
