@@ -236,7 +236,7 @@ int llclose(int fd) {
 				return -1;
 		} while( handleMessage(k, buffer, A_R) != TRAMA_UA );
 		
-		printf("Recebeu mensagem, kappa fabullous!\n");
+		printf("Recebeu mensagem, kappa fabullous disc!\n");
 	}
 	
 	return close_serial(fd);
