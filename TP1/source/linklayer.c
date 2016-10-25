@@ -27,60 +27,67 @@ void atende() {
 
 // !!NOT FINISHED!!
 int handleMessage(int length, unsigned char msg[]) {
-	int i, type;
+	int i, type = -2;
 	unsigned char f1 = '\0', a = '\0', c = '\0', bcc1 = '\0', bcc2 = '\0';
 	for( i = 0; i < length; i++ ) {
 		if( f1 == '\0' ) {
 			if( msg[i] == BYTE_FLAG ) {
-				printf("FLAG: %x\n", msg[i]); 
+				printf("0 FLAG: %x\n", msg[i]); 
 				f1 = msg[i];
 			}
 		} else if( a == '\0' && i > 0 && msg[i-1] == f1 ) {
 			if( msg[i] == BYTE_A ) {
-				printf("FLAG: %x\n", msg[i]);
+				printf("1 FLAG: %x\n", msg[i]);
 				a = msg[i];
 			}
 			else
 				return ERR;
-		} else if( i > 0 && msg[i-1] == a ) {
+		} else if( i > 0 && msg[i-1] == a && type == -2 ) {
 			switch( msg[i] ) {
 				case BYTE_C_I:
 				case BYTE_C_I2:
 					type = TRAMA_I;
+					printf("Trama I\n");
 					break;
 				case BYTE_C_SET:
 					type = TRAMA_SET;
+					printf("Trama SET\n");
 					break;
 				case BYTE_C_DISC:
 					type = TRAMA_DISC;
+					printf("Trama DISC\n");
 					break;
 				case BYTE_C_UA:
 					type = TRAMA_UA;
+					printf("Trama UA\n");
 					break;
 				case BYTE_C_RR:
-				case 0x85:
+				case BYTE_C_RR2:
 					type = TRAMA_RR;
+					printf("Trama RR\n");
 					break;
 				case BYTE_C_REJ:
-				case 0x81:
+				case BYTE_C_REJ2:
 					type = TRAMA_REJ;
+					printf("Trama REJ\n");
 					break;
 				default:
 					return ERR;
 			}
-			printf("FLAG: %x\n", msg[i]);
+			printf("2 FLAG: %x\n", msg[i]);
 			c = msg[i];
 		} else if( i > 0 && msg[i-1] == c ) {
 			if( (a ^ c) == msg[i] ) {
-				printf("FLAG: %x\n", msg[i]);
+				printf("3 FLAG: %x\n", msg[i]);
 				bcc1 = msg[i];
 			}
 			else
 				return ERR;
-		} else if( i > 0 && msg[i-1] == bcc1 ) {
+		} else if( i > 0 && msg[i-1] == bcc2 ) {
 			if( msg[i] == BYTE_FLAG ) {
+				printf("4 FLAG: %x\n", msg[i]);
 				if( type != TRAMA_I )
-					break;
+					return type;
 				else
 					return ERR;
 			} else if( msg[i] != BYTE_FLAG ) {
@@ -88,14 +95,15 @@ int handleMessage(int length, unsigned char msg[]) {
 					return ERR;
 			}
 		} else if( bcc1 != '\0' && msg[i] == bcc1 && type == TRAMA_I ) {
-			printf("FLAG: %x\n", msg[i]);
+			printf("5 FLAG: %x\n", msg[i]);
 			bcc2 = msg[i];
 		} else if( i > 0 && msg[i-1] == bcc2 && type == TRAMA_I ) {
+			printf("%d\n", type);
 			return type;
 		}
 	}
 
-	return 0;
+	return -1;
 }
 
 int llopen(int porta, int status) {
@@ -116,6 +124,7 @@ int llopen(int porta, int status) {
 	}
 
 	unsigned char buffer[MAX_LEN];
+	int k;
 
 	if( status == TRANSMITTER ) {
 		unsigned char set[5];
@@ -129,33 +138,34 @@ int llopen(int porta, int status) {
 			if( write_serial(fd, set, 5) == -1 ) return -1;
 		    alarm(ll.timeOut);
 		    flag = 0;
-		    if( read_serial(fd, buffer) == 0 ) {
-				int a;
-				for(a = 0; a < 5; a++)
-					printf("%x - received\n", buffer[a]);
-
-				//verificar conteudo
-				printf("Recebeu mensagem, kappa\n");
-				break;
-			} 
+		    if( ( k = read_serial(fd, buffer) ) != -1 ) {
+				if( handleMessage(k, buffer) == TRAMA_UA ) {
+					printf("Recebeu mensagem, kappa\n");
+					break;
+				} else {
+					counter++;
+					flag = 1;
+				}
+			}
 		}
-	} else {	
+		
+		if (counter == ll.numTransmissions)
+			printf("Maximum number of transmissions\n");		
+	} else {
+		do {
+			k = read_serial(fd, buffer);
+			if( k == -1 )
+				return -1;
+		} while( handleMessage(k, buffer) != TRAMA_SET );
 
-		if( read_serial(fd, buffer) == 0 ) {
-			
-			int a;
-			for(a = 0; a < 5; a++)
-				printf("%x - received\n", buffer[a]);
-
-			unsigned char ua[5];
-			ua[0] = BYTE_FLAG;
-			ua[1] = BYTE_A;
-			ua[2] = BYTE_C_UA;
-			ua[3] = BYTE_A ^ BYTE_C_UA;
-			ua[4] = BYTE_FLAG;
-			write_serial(fd, ua, 5);
-			printf("Recebeu mensagem, kappa fabullous!\n");
-		}
+		unsigned char ua[5];
+		ua[0] = BYTE_FLAG;
+		ua[1] = BYTE_A;
+		ua[2] = BYTE_C_UA;
+		ua[3] = BYTE_A ^ BYTE_C_UA;
+		ua[4] = BYTE_FLAG;
+		write_serial(fd, ua, 5);
+		printf("Recebeu mensagem, kappa fabullous!\n");
 	}
 
 	/* Dependendo do status vai-se enviar (TRANSMITTER) ou receber (RECEIVER) uma mensagem */
@@ -202,12 +212,13 @@ int open_serial(int porta) {
     ll.timeOut = 3;
     ll.numTransmissions = 3;
     
+	printf("Before Open\n");
     fd = open(ll.port, O_RDWR | O_NOCTTY);
+	printf("Abriu\n");
     if (fd < 0) {
 		printf("Erro ao abrir fd\n");
         return -1;
     }
-
     if (tcgetattr(fd, &oldtio) == -1) {
 		printf("Erro ao aceder aos atributos\n");
         return -1;
@@ -229,7 +240,7 @@ int open_serial(int porta) {
 		printf("Erro ao alterar os atributos\n");
         return -1;
     }
-
+	
     return fd;
 }
 
@@ -261,24 +272,30 @@ int write_serial(int fd, unsigned char msg[], int length) {
 int read_serial(int fd, unsigned char *buf) {
     /* Ler UA */
     int hasFirst = 0, nfr = 0;
-    int iter = 0;
+    int iter = 0;            
+    int k;
     while(1) {
         int n = 0;
         do {
+        	printf("Waiting...\n");
             n = read(fd, buf, MAX_LEN - nfr);
-        } while( n <= 0 && flag == 0 );
-
+            if( n == -1 )
+            	return -1;
+            	
+        } while( flag == 0 );
+        
         if( n <= 0 )
             return -1;
 
         nfr += n;
 
         if( !hasFirst ) {
-            int k;
-
+            //int k;
             for( k = 0; k < nfr; k++ ) 
-                if( buf[k] == BYTE_FLAG )
+                if( buf[k] == BYTE_FLAG ) {
+                	printf("First flag: %d\n", k);
                     break;
+                }
 
             if( k < nfr ) {
                 if( k ) {
@@ -293,11 +310,12 @@ int read_serial(int fd, unsigned char *buf) {
         }
         
         if(hasFirst && nfr > 1) {
-            int k;
 
             for( k = 1; k < nfr; k++ )
-                if( buf[k] == BYTE_FLAG )
+                if( buf[k] == BYTE_FLAG ) {
+                	printf("Last flag: %d\n", k);
                     break;
+                }
 
             if( k < nfr ) {
                 alarm(0);
@@ -316,8 +334,5 @@ int read_serial(int fd, unsigned char *buf) {
         iter++;
     }
 
-    int a;
-    for(a = 0; a < 5; a++)
-        printf("%x - received\n", buf[a]);
-	return 0;
+	return k + 1;
 }
