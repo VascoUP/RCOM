@@ -245,14 +245,25 @@ int llclose(int fd) {
 
 int llread(int fd, char * buffer) {
     /*
-    ..
+		1 - Espera leitura de trama I 
+		2 - Enviar trama RR se leu mensagem com sucesso
+			(Reijeitar caso contrário, trama REJ)
+		3 - Returnar o que leu, ou negativo se deu erro
     */
     return 0; //return # characters read | -1 if error
 }
 
 int llwrite(int fd, char * buffer, int length) {
     /*
-    ...
+		1 - Enviar trama de informacao com <length> bytes mais os bytes de controlo
+			-> Poder acontecer não conseguir enviar, das duas uma:
+				1. Ou espera que de timeout (alarm)
+				2. Ou avanca para a proxima iteracao e incrementar o counter
+		2 - Esperar leitura de RR (pode ser REJ)
+			-> Se ler RR acaba a funcao
+			-> Da timeout o que quer dizer que tem de reenviar a trama I exatamente igual
+			-> Se receber REJ voltar a enviar, com isto tem de se incrementar o counter
+		3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
     return 0; //return # characters written | -1 if error
 }

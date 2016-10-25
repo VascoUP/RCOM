@@ -8,6 +8,35 @@ typedef struct {
     int status;         //TRANSMITTER | RECEIVER
 } applicationLayer;
 
+int handler_write( /* args */ ) {
+	/*
+		Nao sei se e preciso, so usado se no futuro precisarmos
+	*/
+	return 0;
+}
+
+int send_file( /* args */ ) {
+	/*
+		Chama as funcoes llwrite com as tramas I que contém a info da imagem
+	*/
+	return 0;
+}
+
+int handler_read( /* args */ ) {
+	/*
+		Handler da trama I recebida ao ler
+			- Tem de detetar duplicados, ou erros
+	*/
+	return 0;
+}
+
+int receive_file( /* args */ ) {
+	/*
+		Constroi uma imagem com as info das tramas I recebidas
+	*/
+	return 0;
+}
+
 int main(int argc, char **argv) {
 
 	applicationLayer info;
