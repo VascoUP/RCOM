@@ -358,7 +358,9 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
     unsigned char resp[MAX_LEN];
+    printf("length: %d\n", length);
     int k, tr, n = stuffing(buffer, length);
+    printf("length: %d\n", n);
     if( n < 0 )
         return n;
 
