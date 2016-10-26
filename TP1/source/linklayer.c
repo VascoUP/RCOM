@@ -15,10 +15,14 @@ static struct termios oldtio;
 static int flag = 1;
 static int counter = 0;
 
-static int handleMessage(int length, unsigned char msg[], int type_a);
+static int handleMessage(unsigned int length, unsigned char msg[], int type_a);
+
+static int destuffing(unsigned char *buffer, unsigned int length);
+static int stuffing(unsigned char *buffer, unsigned int length);
+
 static int open_serial(int porta, int status); 
 static int close_serial(int fd);
-static int write_serial(int fd, unsigned char msg[], int length);
+static int write_serial(int fd, unsigned char msg[], unsigned int length);
 static int read_serial(int fd, unsigned char *buf);
 
 void atende() {
@@ -27,7 +31,7 @@ void atende() {
 }
 
 // !!NOT FINISHED!!
-int handleMessage(int length, unsigned char msg[], int type_a) {
+int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
     int i, type = UNDEFINED;
     unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
     for( i = 0; i < length; i++ ) {
@@ -110,6 +114,14 @@ int handleMessage(int length, unsigned char msg[], int type_a) {
     }
 
     return -1;
+}
+
+int destuffing(unsigned char *buffer, unsigned int length) {
+	return 0;
+}
+
+int stuffing(unsigned char *buffer, unsigned int length) {
+	return 0;
 }
 
 int llopen(int porta, int status) {
@@ -270,11 +282,13 @@ int llread(int fd, unsigned char * buffer) {
 
         write_serial(fd, rej, 5);
     }
+    
+    destuffing(buffer, n);
         
     return n; //return # characters read | -1 if error
 }
 
-int llwrite(int fd, unsigned char * buffer, int length) {
+int llwrite(int fd, unsigned char * buffer, unsigned int length) {
     /*
         1 - Enviar trama de informacao com <length> bytes mais os bytes de controlo
             -> Poder acontecer não conseguir enviar, das duas uma:
@@ -286,6 +300,8 @@ int llwrite(int fd, unsigned char * buffer, int length) {
             -> Se receber REJ voltar a enviar, com isto tem de se incrementar o counter
         3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
+    stuffing(buffer, length);
+    
     return 0; //return # characters written | -1 if error
 }
 
@@ -349,7 +365,7 @@ int close_serial(int fd) {
     return 0;
 }
 
-int write_serial(int fd, unsigned char msg[], int length) {
+int write_serial(int fd, unsigned char msg[], unsigned int length) {
     int nw = 0;
     nw = write(fd, msg, length);
     while (length > nw) {

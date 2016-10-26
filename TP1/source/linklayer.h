@@ -51,4 +51,4 @@ int llclose(int fd);
 
 int llread(int fd, unsigned char * buffer);
 
-int llwrite(int fd, unsigned char * buffer, int length);
+int llwrite(int fd, unsigned char * buffer, unsigned int length);
