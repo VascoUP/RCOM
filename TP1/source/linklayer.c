@@ -151,6 +151,9 @@ int stuffing(unsigned char *buffer, unsigned int length) {
     if (temp == NULL) {
         return -1;
     }
+
+    printf("Buffer adress: %p\n", (void *) buffer);
+    printf("TEMP adress: %p\n", (void *) temp);
     buffer = temp;
 
     i = 0;
@@ -355,17 +358,16 @@ int llread(int fd, unsigned char * buffer) {
 
         write_serial(fd, rej, 5);
     }
-/*
+
     n -= 6;
     memmove(buffer, buffer + 4 * sizeof(unsigned char), n);
 
     destuffing(buffer, n);
-
-    int a;
+    printf("---------------\n---------------\n--------------\n");
     for( a = 0; a < n; a++ )
         printf("%c", buffer[a]);
     printf("\nEnd message\n");
-*/
+
     return n; //return # characters read | -1 if error
 }
 
@@ -383,9 +385,9 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
     unsigned char resp[MAX_LEN];
-    printf("length: %d\n", length);
+    printf("Buffer adress: %p\n", (void *) buffer);
     int k, tr, n = stuffing(buffer, length);
-    printf("length: %d\n", n);
+    printf("Buffer adress 2: %p\n", (void *) buffer);
     if( n < 0 )
         return n;
 
