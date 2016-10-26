@@ -243,7 +243,7 @@ int llclose(int fd) {
 
 }
 
-int llread(int fd, char * buffer) {
+int llread(int fd, unsigned char * buffer) {
     /*
       1 - Espera leitura de trama I 
       2 - Enviar trama RR se leu mensagem com sucesso
@@ -274,7 +274,7 @@ int llread(int fd, char * buffer) {
     return n; //return # characters read | -1 if error
 }
 
-int llwrite(int fd, char * buffer, int length) {
+int llwrite(int fd, unsigned char * buffer, int length) {
     /*
         1 - Enviar trama de informacao com <length> bytes mais os bytes de controlo
             -> Poder acontecer não conseguir enviar, das duas uma:

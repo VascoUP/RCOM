@@ -49,6 +49,6 @@ int llopen(int porta, int status);
 
 int llclose(int fd);
 
-int llread(int fd, char * buffer);
+int llread(int fd, unsigned char * buffer);
 
-int llwrite(int fd, char * buffer, int length);
+int llwrite(int fd, unsigned char * buffer, int length);
