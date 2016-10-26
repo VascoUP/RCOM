@@ -118,7 +118,24 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
 }
 
 int destuffing(unsigned char *buffer, unsigned int length) {
-    return 0;
+    int i = 0, count = 0;
+    
+    for (i = 0; i < length; i++) {
+        if (buffer[i] == BYTE_ESCAPE) {
+            memmove(&buffer[i], &buffer[i+1], length - i);
+            buffer[i] = buffer[i] ^ 0x20;
+            count++;
+        }
+    }
+
+    int newlength = length - count;
+    unsigned char *temp = realloc(buffer, newlength);
+    if (temp == NULL) {
+        return -1;
+    }
+    buffer = temp;
+    
+    return newlength;
 }
 
 int stuffing(unsigned char *buffer, unsigned int length) {
@@ -139,7 +156,7 @@ int stuffing(unsigned char *buffer, unsigned int length) {
     i = 0;
     for (i = 0; i < newlength; i++) {
         if (buffer[i] == BYTE_FLAG || buffer[i] == BYTE_ESCAPE) {
-            memmove(&buffer[i + 1], &buffer[i], newlength - i + 1);
+            memmove(&buffer[i + 1], &buffer[i], newlength - i);
             buffer[i] = BYTE_ESCAPE;
             buffer[i+1] = buffer[i+1] ^ 0x20;
         }
@@ -342,7 +359,7 @@ int llread(int fd, unsigned char * buffer) {
 
     int a;
     for( a = 0; a < n; a++ )
-    	printf("%c", buffer[a]);
+        printf("%c", buffer[a]);
     printf("\nEnd message\n");
 */
     return n; //return # characters read | -1 if error
@@ -361,7 +378,9 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
     unsigned char resp[MAX_LEN];
+    printf("length: %d\n", length);
     int k, tr, n = stuffing(buffer, length);
+    printf("length: %d\n", n);
     if( n < 0 )
         return n;
 
