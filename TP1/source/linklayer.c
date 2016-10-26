@@ -305,7 +305,7 @@ int llclose(int fd) {
 
 }
 
-int llread(int fd, unsigned char * buffer) {
+int llread(int fd, unsigned char ** buffer) {
     printf("Reading...\n");
     /*
       1 - Espera leitura de trama I
@@ -314,7 +314,7 @@ int llread(int fd, unsigned char * buffer) {
       3 - Returnar o que leu, ou negativo se deu erro
     */
     int n = -1;
-    unsigned char msg[255];
+    unsigned char* msg = (unsigned char *) malloc(MAX_LEN * sizeof(char));
     n = read_serial(fd, msg);
 	printf("N: %d\n", n);
     int a;
@@ -360,13 +360,10 @@ int llread(int fd, unsigned char * buffer) {
     }
 
     n -= 6;
-    memmove(buffer, buffer + 4 * sizeof(unsigned char), n);
+    memmove(msg, msg + 4 * sizeof(unsigned char), n);
 
-    destuffing(buffer, n);
-    printf("---------------\n---------------\n--------------\n");
-    for( a = 0; a < n; a++ )
-        printf("%c", buffer[a]);
-    printf("\nEnd message\n");
+    destuffing(msg, n);
+	*buffer = msg;
 
     return n; //return # characters read | -1 if error
 }
