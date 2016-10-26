@@ -84,14 +84,12 @@ int main(int argc, char **argv) {
 		strcpy(msg, "TESt4R U2e*'");
 		llwrite(info.fileDescriptor, (unsigned char *) msg, 12);
 	} else {
-        printf("Reading app\n");
 		int n = llread(info.fileDescriptor, (unsigned char **) &msg);
 		int a;
 		for( a = 0; a < n; a++ )
 			printf("%c", msg[a]);
-		printf("\nEnd message\n");
+		printf("\n");
 	}
-    free(msg);
 
 	int count = 0;
 	do {
@@ -99,6 +97,8 @@ int main(int argc, char **argv) {
 			break;
 		count++;
 	} while( count < 3 );
+
+    free(msg);
 
 	if( count == 3 )
 		return -1;
