@@ -101,16 +101,15 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
                 return type;
             else
                 return ERR;
-        }
         //Segundo campo de protecao (so valido para tramas I)
-        /*} else if( bcc1 != 0 && msg[i] == bcc1 && msg[i-1] != bcc1 && type == TRAMA_I ) {
+        } else if( bcc1 != 0 && msg[i] == bcc1 && msg[i-1] != bcc1 && type == TRAMA_I ) {
             printf("5 FLAG: %x\n", msg[i]);
             bcc2 = msg[i];
         //Flag - 2 (so valido
-        } else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc2 && type == TRAMA_I ) {
+        } else if( bcc2 != 0 && msg[i] == BYTE_FLAG && msg[i-1] == bcc2 && type == TRAMA_I ) {
             printf("%d\n", type);
             return type;
-        }*/
+        }
     }
 
     return -1;
