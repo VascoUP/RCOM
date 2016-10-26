@@ -7,100 +7,116 @@ typedef struct {
     int status;         //TRANSMITTER | RECEIVER
 } applicationLayer;
 
+char* loadImage(char *path) {
+    int length;
+    
+    FILE *fp;
+    fp = fopen(path, "r");
+
+    fseek(fp, 0, SEEK_END);
+    length = ftell(fp);
+    rewind(fp);
+
+    char *data = malloc(sizeof(char) * (length + 1));
+    fread(data, length, 1, fp);
+
+    return data;
+}
+
 int handler_write( /* args */ ) {
-	/*
-		Nao sei se e preciso, so usado se no futuro precisarmos
-	*/
-	return 0;
+    /*
+        Nao sei se e preciso, so usado se no futuro precisarmos
+    */
+    return 0;
 }
 
 int send_file() {
-	/*
-		Chama as funcoes llwrite com as tramas I que contém a info da imagem
-	*/
+    /*
+        Chama as funcoes llwrite com as tramas I que contém a info da imagem
+    */
 
 
-	return 0;
+    return 0;
 }
 
 int handler_read( /* args */ ) {
-	/*
-		Handler da trama I recebida ao ler
-			- Tem de detetar duplicados, ou erros
-	*/
-	return 0;
+    /*
+        Handler da trama I recebida ao ler
+            - Tem de detetar duplicados, ou erros
+    */
+    return 0;
 }
 
 int receive_file( /* args */ ) {
-	/*
-		Constroi uma imagem com as info das tramas I recebidas
-	*/
-	return 0;
+    /*
+        Constroi uma imagem com as info das tramas I recebidas
+    */
+    return 0;
 }
 
 int main(int argc, char **argv) {
 
-	applicationLayer info;
-	int port;
+    applicationLayer info;
+    int port;
 
-	if( strcmp("receiver", argv[1])==0 ) {
-		if( argc != 3 ) {
-			printf("1 - Falta argumentos\n");
-			return -1;
-		}
+    if( strcmp("receiver", argv[1])==0 ) {
+        if( argc != 3 ) {
+            printf("1 - Falta argumentos\n");
+            return -1;
+        }
 
-		info.status = RECEIVER;
+        info.status = RECEIVER;
 
-	}
-	else if( strcmp("transmitter", argv[1])==0 ) {
-		if( argc != 4 ) {
-			printf("2 - Falta argumentos\n");
-			return -1;
-		}
+    }
+    else if( strcmp("transmitter", argv[1])==0 ) {
+        if( argc != 4 ) {
+            printf("2 - Falta argumentos\n");
+            return -1;
+        }
 
-		info.status = TRANSMITTER;
+        info.status = TRANSMITTER;
 
-	}
-	else
-		return -1;
+    }
+    else
+        return -1;
 
-	if( strcmp("/dev/ttyS0", argv[2])==0 )
-		port = 0;
-	else if( strcmp("/dev/ttyS1", argv[2])==0 )
-		port = 1;
-	else {
-		printf("Porta nao existente\n");
-		return -1;
-	}
+    if( strcmp("/dev/ttyS0", argv[2])==0 )
+        port = 0;
+    else if( strcmp("/dev/ttyS1", argv[2])==0 )
+        port = 1;
+    else {
+        printf("Porta nao existente\n");
+        return -1;
+    }
 
-	info.fileDescriptor = llopen( port, info.status );
-	if( info.fileDescriptor < 0 ) {
-		printf("Erro ao abrir a porta de série\n");
-		return -1;
-	}
+    info.fileDescriptor = llopen( port, info.status );
+    if( info.fileDescriptor < 0 ) {
+        printf("Erro ao abrir a porta de série\n");
+        return -1;
+    }
 
-	char *msg = (char *) malloc(13 * sizeof(char));
-	if( info.status == TRANSMITTER ) {
-		strcpy(msg, "TESt4R U2e*'");
-		llwrite(info.fileDescriptor, (unsigned char *) msg, 12);
-	} else {
-		int n = llread(info.fileDescriptor, (unsigned char **) &msg);
-		int a;
-		for( a = 0; a < n; a++ )
-			printf("%c", msg[a]);
-		printf("\n");
-	}
+    char *msg = (char *) malloc(13 * sizeof(char));
+    if( info.status == TRANSMITTER ) {
+        strcpy(msg, "TESt4R U2e*'");
+        llwrite(info.fileDescriptor, (unsigned char *) msg, 12);
+    } else {
+        int n = llread(info.fileDescriptor, (unsigned char **) &msg);
+        int a;
+        for( a = 0; a < n; a++ )
+            printf("%c", msg[a]);
+        printf("\n");
+    }
 
-	int count = 0;
-	do {
-		if( llclose(info.fileDescriptor) == 0 )
-			break;
-		count++;
-	} while( count < 3 );
+    int count = 0;
+    do {
+        if( llclose(info.fileDescriptor) == 0 )
+            break;
+        count++;
+    } while( count < 3 );
 
     free(msg);
 
-	if( count == 3 )
-		return -1;
-	return 0;
+    if( count == 3 )
+        return -1;
+    return 0;
 }
