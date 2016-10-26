@@ -289,17 +289,26 @@ int llread(int fd, unsigned char * buffer) {
       3 - Returnar o que leu, ou negativo se deu erro
     */
     int n = -1;
-    if ((n = read_serial(fd, buffer)) == TRAMA_I) {
-    	printf("Read I\n");
+    n = read_serial(fd, buffer);
+    if ( handleMessage(n, buffer, A_T) == TRAMA_I ) {
+        if( //Se sequenceNumber == 0 entao o BIT(6) == 1
+            (buffer[2] & BIT(6) && ll.sequenceNumber == 0) ||
+            //Se sequenceNumber == 1 entao o BIT(6) == 0
+            (!(buffer[2] & BIT(6)) && ll.sequenceNumber == 1)) {
+            //Se nao e duplicado
+            printf("Read I\n");
 
-        unsigned char rr[5];
-        rr[0] = BYTE_FLAG;
-        rr[1] = BYTE_AT;
-        rr[2] = BYTE_C_RR;
-        rr[3] = rr[1] ^ rr[2];
-        rr[4] = BYTE_FLAG;
+            unsigned char rr[5];
+            rr[0] = BYTE_FLAG;
+            rr[1] = BYTE_AT;
+            rr[2] = BYTE_C_RR;
+            rr[3] = rr[1] ^ rr[2];
+            rr[4] = BYTE_FLAG;
 
-        write_serial(fd, rr, 5);
+            write_serial(fd, rr, 5);
+        } else
+            //Handle duplicado
+            printf("Duplicado\n");
     } else {
         printf("Read NOTI\n");
 
@@ -309,6 +318,12 @@ int llread(int fd, unsigned char * buffer) {
         rej[2] = BYTE_C_REJ;
         rej[3] = rej[1] ^ rej[2];
         rej[4] = BYTE_FLAG;
+
+        if( ll.sequenceNumber == 1 ) {
+            ll.sequenceNumber = 0;
+            rej[2] |= BIT(7);
+        } else
+            ll.sequenceNumber = 1;
 
         write_serial(fd, rej, 5);
     }
@@ -353,6 +368,12 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     buffer[3] = buffer[1] ^ buffer[2];
     buffer[n-1] = buffer[3];
     buffer[n-2] = BYTE_FLAG;
+
+    if( ll.sequenceNumber == 1 ) {
+        ll.sequenceNumber = 0;
+        buffer[2] |= BIT(7);
+    } else
+        ll.sequenceNumber = 1;
 
     int a;
     for( a = 0; a < n; a++ )
@@ -402,7 +423,7 @@ int open_serial(int porta, int status) {
     }
 
     ll.status = status;
-    ll.sequenceNumber = 0;
+    ll.sequenceNumber = status == TRANSMITTER ? 0 : 1;
     ll.timeOut = 3;
     ll.numTransmissions = 3;
 
