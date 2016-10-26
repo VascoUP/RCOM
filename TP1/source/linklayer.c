@@ -264,6 +264,8 @@ int llread(int fd, unsigned char * buffer) {
     */
     int n = -1;
     if ((n = read_serial(fd, buffer)) == TRAMA_I) {
+    	printf("Read I\n");
+    
         unsigned char rr[5];
         rr[0] = BYTE_FLAG;
         rr[1] = BYTE_AT;
@@ -273,6 +275,8 @@ int llread(int fd, unsigned char * buffer) {
         
         write_serial(fd, rr, 5);
     } else {
+    	printf("Read NOTI\n");
+    	
         unsigned char rej[5];
         rej[0] = BYTE_FLAG;
         rej[1] = BYTE_AT;
@@ -283,12 +287,20 @@ int llread(int fd, unsigned char * buffer) {
         write_serial(fd, rej, 5);
     }
     
+    n -= 6;
+    memmove(buffer, buffer + 4 * sizeof(unsigned char), n);
+    
     destuffing(buffer, n);
-        
+    
+    int a;
+    for( a = 0; a < n; a++ ) {
+    	printf("%c", buffer[a]);
+    printf("\nEnd message\n");
+    
     return n; //return # characters read | -1 if error
 }
 
-int llwrite(int fd, unsigned char * buffer, unsigned int length) {
+int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     /*
         1 - Enviar trama de informacao com <length> bytes mais os bytes de controlo
             -> Poder acontecer não conseguir enviar, das duas uma:
@@ -300,7 +312,40 @@ int llwrite(int fd, unsigned char * buffer, unsigned int length) {
             -> Se receber REJ voltar a enviar, com isto tem de se incrementar o counter
         3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
-    stuffing(buffer, length);
+    //unsigned char resp[
+    int n = stuffing(buffer, length);
+    if( n < 0 )
+    	return n;
+    
+    n += 6;
+    buffer = (unsigned char *) realloc (buffer, n);
+    memmove(buffer + 4 * sizeof(unsigned char), buffer, n - 6);
+    
+    buffer[0] = BYTE_FLAG;
+    buffer[1] = BYTE_AT;
+    buffer[2] = BYTE_C_I;
+    buffer[3] = buffer[1] ^ buffer[2];
+    buffer[n-1] = buffer[3];
+    buffer[n-2] = BYTE_FLAG;
+    
+  	while(flag && counter < ll.numTransmissions) {
+        alarm(ll.timeOut);
+        flag = 0;
+        
+        if( write_serial(fd, buffer, n) == -1 ) return -1;
+        if( ( k = read_serial(fd, buffer) ) != -1 ) {
+            if( handleMessage(k, buffer, A_T) == TRAMA_DISC ) {
+                printf("Recebeu mensagem, kappa disc\n");
+                break;
+            } else {
+                counter++;
+                flag = 1;
+            }
+        }
+    }
+    
+    
+    write_serial(fd, buffer, n);
     
     return 0; //return # characters written | -1 if error
 }
