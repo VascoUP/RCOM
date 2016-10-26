@@ -194,7 +194,6 @@ int llopen(int porta, int status) {
 
         flag = 1;
         counter = 0;
-
     } else {
         do {
             k = read_serial(fd, buffer);
@@ -243,6 +242,10 @@ int llclose(int fd) {
             if( ( k = read_serial(fd, buffer) ) != -1 ) {
                 if( handleMessage(k, buffer, A_T) == TRAMA_DISC ) {
                     printf("Recebeu mensagem, kappa disc\n");
+
+                    flag = 1;
+                    counter = 0;
+
                     break;
                 } else {
                     counter++;
@@ -287,8 +290,8 @@ int llread(int fd, unsigned char * buffer) {
     */
     int n = -1;
     if ((n = read_serial(fd, buffer)) == TRAMA_I) {
-
     	printf("Read I\n");
+
         unsigned char rr[5];
         rr[0] = BYTE_FLAG;
         rr[1] = BYTE_AT;
@@ -336,7 +339,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
     unsigned char resp[MAX_LEN];
-    int k, n = stuffing(buffer, length);
+    int k, tr, n = stuffing(buffer, length);
     if( n < 0 )
         return n;
 
@@ -350,27 +353,37 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     buffer[3] = buffer[1] ^ buffer[2];
     buffer[n-1] = buffer[3];
     buffer[n-2] = BYTE_FLAG;
-    
+
+    int a;
+    for( a = 0; a < n; a++ )
+    	printf("%x", buffer[a]);
+    printf("\nEnd message\n");
+
     while(flag && counter < ll.numTransmissions) {
         alarm(ll.timeOut);
-        flag = 0;
 
         if( write_serial(fd, buffer, n) == -1 ) return -1;
-        if( ( k = read_serial(fd, buffer) ) != -1 ) {
-            if( handleMessage(k, resp, A_T) == TRAMA_UA ) {
-                printf("Recebeu mensagem, kappa ua\n");
-                break;
-            } else {
-                counter++;
-                flag = 1;
-            }
+
+        do {
+            flag = 0;
+            if( ( k = read_serial(fd, resp) ) != -1 )
+                tr = handleMessage(k, resp, A_T);
+        } while( tr != TRAMA_RR && tr != TRAMA_REJ );
+
+        if( tr == TRAMA_RR ) {
+            printf("Recebeu mensagem, kappa ua\n");
+
+            flag = 1;
+            counter = 0;
+
+            break;
+        } else if( tr == TRAMA_REJ ) {
+            counter++;
+            flag = 1;
         }
     }
 
-
-    write_serial(fd, buffer, n);
-
-    return 0; //return # characters written | -1 if error
+    return counter == ll.numTransmissions ? -1 : n; //return # characters written | -1 if error
 }
 
 int open_serial(int porta, int status) {
