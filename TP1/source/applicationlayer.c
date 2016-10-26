@@ -81,11 +81,11 @@ int main(int argc, char **argv) {
 
 	char *msg = (char *) malloc(13 * sizeof(char));
 	if( info.status == TRANSMITTER ) {
-		strcpy(msg, "oooooooooooo");
+		strcpy(msg, "OLA QUERO-TE");
 		/*if( */llwrite(info.fileDescriptor, (unsigned char *) msg, 12) /*< 0 ) llclose()*/;
 	} else {
         printf("Reading app\n");
-		int n = llread(info.fileDescriptor, (unsigned char *) msg);
+		int n = llread(info.fileDescriptor, (unsigned char **) &msg);
 		int a;
 		for( a = 0; a < n; a++ )
 			printf("%c", msg[a]);
