@@ -154,7 +154,7 @@ int stuffing(unsigned char *buffer, unsigned int length) {
     i = 0;
     for (i = 0; i < newlength; i++) {
         if (buffer[i] == BYTE_FLAG || buffer[i] == BYTE_ESCAPE) {
-            memmove(&buffer[i + 1], &buffer[i], newlength - i + 1);
+            memmove(&buffer[i + 1], &buffer[i], newlength - i);
             buffer[i] = BYTE_ESCAPE;
             buffer[i+1] = buffer[i+1] ^ 0x20;
         }
