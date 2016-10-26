@@ -20,7 +20,7 @@ static int handleMessage(unsigned int length, unsigned char msg[], int type_a);
 static int destuffing(unsigned char *buffer, unsigned int length);
 static int stuffing(unsigned char *buffer, unsigned int length);
 
-static int open_serial(int porta, int status); 
+static int open_serial(int porta, int status);
 static int close_serial(int fd);
 static int write_serial(int fd, unsigned char msg[], unsigned int length);
 static int read_serial(int fd, unsigned char *buf);
@@ -35,10 +35,10 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
     int i, type = UNDEFINED;
     unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
     for( i = 0; i < length; i++ ) {
-        //Flag - 1 
+        //Flag - 1
         if( f1 == 0 ) {
             if( msg[i] == BYTE_FLAG ) {
-                printf("0 FLAG: 0x%x\n", msg[i]); 
+                printf("0 FLAG: 0x%x\n", msg[i]);
                 f1 = msg[i];
             }
         //Campo de endereco (tem de vir logo a seguir à primeira Flag)
@@ -79,7 +79,7 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
                     type = TRAMA_REJ;
                     printf("Trama REJ\n");
                     break;
-                default: //Se nenhum deles corresponder a um campo de controlo valido 
+                default: //Se nenhum deles corresponder a um campo de controlo valido
                     return ERR;
             }
             printf("2 FLAG: 0x%x\n", msg[i]);
@@ -106,7 +106,7 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
         /*} else if( bcc1 != 0 && msg[i] == bcc1 && msg[i-1] != bcc1 && type == TRAMA_I ) {
             printf("5 FLAG: %x\n", msg[i]);
             bcc2 = msg[i];
-        //Flag - 2 (so valido 
+        //Flag - 2 (so valido
         } else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc2 && type == TRAMA_I ) {
             printf("%d\n", type);
             return type;
@@ -152,7 +152,7 @@ int llopen(int porta, int status) {
         set[3] = set[1] ^ set[2];
         set[4] = BYTE_FLAG;
 
-        while(flag && counter < ll.numTransmissions) {    
+        while(flag && counter < ll.numTransmissions) {
             if( write_serial(fd, set, 5) == -1 ) return -1;
             alarm(ll.timeOut);
             flag = 0;
@@ -168,10 +168,10 @@ int llopen(int porta, int status) {
         }
         if (counter == ll.numTransmissions)
             printf("Maximum number of transmissions\n");
-        
+
         flag = 1;
-        counter = 0;    
-        
+        counter = 0;
+
     } else {
         do {
             k = read_serial(fd, buffer);
@@ -188,23 +188,23 @@ int llopen(int porta, int status) {
         write_serial(fd, ua, 5);
         printf("Recebeu mensagem, kappa fabullous!\n");
     }
-    
+
     return fd;
 }
 
 int llclose(int fd) {
-    
+
     int k;
     unsigned char buffer[MAX_LEN];
     unsigned char disc[5];
     unsigned char ua[5];
-    
+
     disc[0] = BYTE_FLAG;
     disc[1] = BYTE_AT;
     disc[2] = BYTE_C_DISC;
     disc[3] = disc[1] ^ disc[2];
-    disc[4] = BYTE_FLAG;        
-    
+    disc[4] = BYTE_FLAG;
+
     ua[0] = BYTE_FLAG;
     ua[1] = BYTE_AR;    //Emissor will be sending UA as a response
     ua[2] = BYTE_C_UA;
@@ -213,7 +213,7 @@ int llclose(int fd) {
 
     if( ll.status == TRANSMITTER ) {
 
-        while(flag && counter < ll.numTransmissions) {    
+        while(flag && counter < ll.numTransmissions) {
             if( write_serial(fd, disc, 5) == -1 ) return -1;
             alarm(ll.timeOut);
             flag = 0;
@@ -227,12 +227,12 @@ int llclose(int fd) {
                 }
             }
         }
-        
+
         do {
             k = write_serial(fd, ua, 5); //return -1;
             counter++;
         } while(counter < ll.numTransmissions && k > 0);
-        
+
     } else {
         do {
             k = read_serial(fd, buffer);
@@ -247,17 +247,17 @@ int llclose(int fd) {
             if( k == -1 )
                 return -1;
         } while( handleMessage(k, buffer, A_R) != TRAMA_UA );
-        
+
         printf("Recebeu mensagem, kappa fabullous disc!\n");
     }
-    
+
     return close_serial(fd);
 
 }
 
 int llread(int fd, unsigned char * buffer) {
     /*
-      1 - Espera leitura de trama I 
+      1 - Espera leitura de trama I
       2 - Enviar trama RR se leu mensagem com sucesso
           (Reijeitar caso contrário, trama REJ)
       3 - Returnar o que leu, ou negativo se deu erro
@@ -265,18 +265,18 @@ int llread(int fd, unsigned char * buffer) {
     int n = -1;
     if ((n = read_serial(fd, buffer)) == TRAMA_I) {
     	printf("Read I\n");
-    
+
         unsigned char rr[5];
         rr[0] = BYTE_FLAG;
         rr[1] = BYTE_AT;
         rr[2] = BYTE_C_RR;
         rr[3] = rr[1] ^ rr[2];
         rr[4] = BYTE_FLAG;
-        
+
         write_serial(fd, rr, 5);
     } else {
     	printf("Read NOTI\n");
-    	
+
         unsigned char rej[5];
         rej[0] = BYTE_FLAG;
         rej[1] = BYTE_AT;
@@ -286,17 +286,17 @@ int llread(int fd, unsigned char * buffer) {
 
         write_serial(fd, rej, 5);
     }
-    
+
     n -= 6;
     memmove(buffer, buffer + 4 * sizeof(unsigned char), n);
-    
+
     destuffing(buffer, n);
-    
+
     int a;
-    for( a = 0; a < n; a++ ) {
+    for( a = 0; a < n; a++ )
     	printf("%c", buffer[a]);
     printf("\nEnd message\n");
-    
+
     return n; //return # characters read | -1 if error
 }
 
@@ -312,30 +312,30 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             -> Se receber REJ voltar a enviar, com isto tem de se incrementar o counter
         3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
-    //unsigned char resp[
-    int n = stuffing(buffer, length);
+    unsigned char resp[MAX_LEN];
+    int k, n = stuffing(buffer, length);
     if( n < 0 )
     	return n;
-    
+
     n += 6;
     buffer = (unsigned char *) realloc (buffer, n);
     memmove(buffer + 4 * sizeof(unsigned char), buffer, n - 6);
-    
+
     buffer[0] = BYTE_FLAG;
     buffer[1] = BYTE_AT;
     buffer[2] = BYTE_C_I;
     buffer[3] = buffer[1] ^ buffer[2];
     buffer[n-1] = buffer[3];
     buffer[n-2] = BYTE_FLAG;
-    
+
   	while(flag && counter < ll.numTransmissions) {
         alarm(ll.timeOut);
         flag = 0;
-        
+
         if( write_serial(fd, buffer, n) == -1 ) return -1;
         if( ( k = read_serial(fd, buffer) ) != -1 ) {
-            if( handleMessage(k, buffer, A_T) == TRAMA_DISC ) {
-                printf("Recebeu mensagem, kappa disc\n");
+            if( handleMessage(k, resp, A_T) == TRAMA_UA ) {
+                printf("Recebeu mensagem, kappa ua\n");
                 break;
             } else {
                 counter++;
@@ -343,10 +343,10 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             }
         }
     }
-    
-    
+
+
     write_serial(fd, buffer, n);
-    
+
     return 0; //return # characters written | -1 if error
 }
 
@@ -364,12 +364,12 @@ int open_serial(int porta, int status) {
         printf("Erro ao criar string da porta\n");
         return -1;
     }
-    
+
     ll.status = status;
     ll.sequenceNumber = 0;
     ll.timeOut = 3;
     ll.numTransmissions = 3;
-    
+
     printf("Before Open\n");
     fd = open(ll.port, O_RDWR | O_NOCTTY);
     printf("Abriu\n");
@@ -381,7 +381,7 @@ int open_serial(int porta, int status) {
         printf("Erro ao aceder aos atributos\n");
         return -1;
     }
-    
+
     bzero(&newtio, sizeof(newtio));
     newtio.c_cflag = ll.baudrate | CS8 | CLOCAL | CREAD;
     newtio.c_iflag = IGNPAR;
@@ -398,7 +398,7 @@ int open_serial(int porta, int status) {
         printf("Erro ao alterar os atributos\n");
         return -1;
     }
-    
+
     return fd;
 }
 
@@ -429,13 +429,13 @@ int write_serial(int fd, unsigned char msg[], unsigned int length) {
 
 int read_serial(int fd, unsigned char *buf) {
     int hasFirst = 0, nfr = 0;
-    int iter = 0;            
+    int iter = 0;
     int k;
     while(1) {
         int n = 0;
-        
+
         n = read(fd, buf, MAX_LEN - nfr);
-        
+
         if( n <= 0 )
             return -1;
 
@@ -443,7 +443,7 @@ int read_serial(int fd, unsigned char *buf) {
 
         if( !hasFirst ) {
             //int k;
-            for( k = 0; k < nfr; k++ ) 
+            for( k = 0; k < nfr; k++ )
                 if( buf[k] == BYTE_FLAG ) {
                     printf("First flag: %d\n", k);
                     break;
@@ -454,13 +454,13 @@ int read_serial(int fd, unsigned char *buf) {
                     memmove(buf, buf + k, nfr - k);
                     nfr -= k;
                 }
-            
+
                 hasFirst = 1;
             }
             else
                 nfr = 0;
         }
-        
+
         if(hasFirst && nfr > 1) {
 
             for( k = 1; k < nfr; k++ )
