@@ -119,7 +119,7 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
 
 int destuffing(unsigned char *buffer, unsigned int length) {
     int i = 0, count = 0;
-    
+
     for (i = 0; i < length; i++) {
         if (buffer[i] == BYTE_ESCAPE) {
             memmove(&buffer[i], &buffer[i+1], length - i);
@@ -134,7 +134,7 @@ int destuffing(unsigned char *buffer, unsigned int length) {
         return -1;
     }
     buffer = temp;
-    
+
     return newlength;
 }
 
@@ -166,6 +166,7 @@ int stuffing(unsigned char *buffer, unsigned int length) {
 }
 
 int llopen(int porta, int status) {
+    printf("Opening...\n");
     int fd;
     if((fd = open_serial(porta, status)) == -1)  {
         printf("Erro open_serial\n");
@@ -207,8 +208,10 @@ int llopen(int porta, int status) {
                 }
             }
         }
-        if (counter == ll.numTransmissions)
+        if (counter == ll.numTransmissions) {
             printf("Maximum number of transmissions\n");
+            return -1;
+        }
 
         flag = 1;
         counter = 0;
@@ -233,7 +236,7 @@ int llopen(int porta, int status) {
 }
 
 int llclose(int fd) {
-
+    printf("Closing...\n");
     int k;
     unsigned char buffer[MAX_LEN];
     unsigned char disc[5];
@@ -300,6 +303,7 @@ int llclose(int fd) {
 }
 
 int llread(int fd, unsigned char * buffer) {
+    printf("Reading...\n");
     /*
       1 - Espera leitura de trama I
       2 - Enviar trama RR se leu mensagem com sucesso
@@ -366,6 +370,7 @@ int llread(int fd, unsigned char * buffer) {
 }
 
 int llwrite(int fd, unsigned char *buffer, unsigned int length) {
+    printf("Writting...\n");
     /*
         1 - Enviar trama de informacao com <length> bytes mais os bytes de controlo
             -> Poder acontecer não conseguir enviar, das duas uma:
@@ -392,8 +397,8 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     buffer[1] = BYTE_AT;
     buffer[2] = BYTE_C_I;
     buffer[3] = buffer[1] ^ buffer[2];
-    buffer[n-1] = buffer[3];
-    buffer[n-2] = BYTE_FLAG;
+    buffer[n-2] = buffer[3];
+    buffer[n-1] = BYTE_FLAG;
 
     printf("print message\n");    int a;
     for( a = 0; a < n; a++ )
@@ -407,16 +412,14 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         ll.sequenceNumber = 1;
 
     while(flag && counter < ll.numTransmissions) {
-        alarm(ll.timeOut);
-
         if( write_serial(fd, buffer, n) == -1 ) return -1;
 
         do {
+            alarm(ll.timeOut);
             flag = 0;
             if( ( k = read_serial(fd, resp) ) != -1 )
                 tr = handleMessage(k, resp, A_T);
-            printf("End read\n");
-        } while( tr != TRAMA_RR && tr != TRAMA_REJ );
+        } while( flag == 0 && tr != TRAMA_RR && tr != TRAMA_REJ );
 
         if( tr == TRAMA_RR ) {
             printf("Recebeu mensagem, kappa ua\n");

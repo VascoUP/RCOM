@@ -82,8 +82,7 @@ int main(int argc, char **argv) {
 	char *msg = (char *) malloc(13 * sizeof(char));
 	if( info.status == TRANSMITTER ) {
 		strcpy(msg, "oooooooooooo");
-		llwrite(info.fileDescriptor, (unsigned char *) msg, 12);
-
+		/*if( */llwrite(info.fileDescriptor, (unsigned char *) msg, 12) /*< 0 ) llclose()*/;
 	} else {
         printf("Reading app\n");
 		int n = llread(info.fileDescriptor, (unsigned char *) msg);
