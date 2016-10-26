@@ -117,11 +117,34 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
 }
 
 int destuffing(unsigned char *buffer, unsigned int length) {
-	return 0;
+    return 0;
 }
 
 int stuffing(unsigned char *buffer, unsigned int length) {
-	return 0;
+    int i = 0, count = 0;
+    for (i = 0; i < length; i++) {
+        if (buffer[i] == BYTE_FLAG || buffer[i] == BYTE_ESCAPE) {
+            count++;
+        }
+    }
+
+    int newlength = length + count;
+    unsigned char *temp = realloc(buffer, newlength);
+    if (temp == NULL) {
+        return -1;
+    }
+    buffer = temp;
+
+    i = 0;
+    for (i = 0; i < newlength; i++) {
+        if (buffer[i] == BYTE_FLAG || buffer[i] == BYTE_ESCAPE) {
+            memmove(&buffer[i + 1], &buffer[i], newlength - i + 1);
+            buffer[i] = BYTE_ESCAPE;
+            buffer[i+1] = buffer[i+1] ^ 0x20;
+        }
+    }
+
+    return newlength;
 }
 
 int llopen(int porta, int status) {
@@ -264,8 +287,8 @@ int llread(int fd, unsigned char * buffer) {
     */
     int n = -1;
     if ((n = read_serial(fd, buffer)) == TRAMA_I) {
-    	printf("Read I\n");
 
+    	printf("Read I\n");
         unsigned char rr[5];
         rr[0] = BYTE_FLAG;
         rr[1] = BYTE_AT;
@@ -275,7 +298,7 @@ int llread(int fd, unsigned char * buffer) {
 
         write_serial(fd, rr, 5);
     } else {
-    	printf("Read NOTI\n");
+        printf("Read NOTI\n");
 
         unsigned char rej[5];
         rej[0] = BYTE_FLAG;
@@ -315,7 +338,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     unsigned char resp[MAX_LEN];
     int k, n = stuffing(buffer, length);
     if( n < 0 )
-    	return n;
+        return n;
 
     n += 6;
     buffer = (unsigned char *) realloc (buffer, n);
@@ -327,8 +350,8 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     buffer[3] = buffer[1] ^ buffer[2];
     buffer[n-1] = buffer[3];
     buffer[n-2] = BYTE_FLAG;
-
-  	while(flag && counter < ll.numTransmissions) {
+    
+    while(flag && counter < ll.numTransmissions) {
         alarm(ll.timeOut);
         flag = 0;
 
