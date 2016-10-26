@@ -35,6 +35,7 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
     int i, type = UNDEFINED;
     unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
     for( i = 0; i < length; i++ ) {
+		printf("msg i : 0x%x\n", msg[i]);
         //Flag - 1
         if( f1 == 0 ) {
             if( msg[i] == BYTE_FLAG ) {
@@ -110,6 +111,7 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
             printf("%d\n", type);
             return type;
         }
+		printf("Len: %d\n------\n", length);
     }
 
     return -1;
@@ -162,7 +164,7 @@ int llopen(int porta, int status) {
         fprintf(stderr, "Error activating the alarm\n");
         return -1;
     }
-/*
+
     unsigned char buffer[MAX_LEN];
     int k;
 
@@ -209,12 +211,12 @@ int llopen(int porta, int status) {
         write_serial(fd, ua, 5);
         printf("Recebeu mensagem, kappa fabullous!\n");
     }
-*/
+
     return fd;
 }
 
 int llclose(int fd) {
-/*
+
     int k;
     unsigned char buffer[MAX_LEN];
     unsigned char disc[5];
@@ -275,7 +277,7 @@ int llclose(int fd) {
 
         printf("Recebeu mensagem, kappa fabullous disc!\n");
     }
-*/
+
     return close_serial(fd);
 
 }
@@ -290,9 +292,10 @@ int llread(int fd, unsigned char * buffer) {
     int n = -1;
     unsigned char msg[255];
     n = read_serial(fd, msg);
+	printf("N: %d\n", n);
     int a;
     for( a = 0; a < n; a++ )
-        printf("%c\n", msg[a]);
+        printf("0x%x\n", msg[a]);
 
     if ( handleMessage(n, msg, A_T) == TRAMA_I ) {
         if( //Se sequenceNumber == 0 entao o BIT(6) == 1
@@ -372,6 +375,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     buffer[3] = buffer[1] ^ buffer[2];
     buffer[n-1] = buffer[3];
     buffer[n-2] = BYTE_FLAG;
+
     printf("print message\n");    int a;
     for( a = 0; a < n; a++ )
         printf("0x%x\n", buffer[a]);
@@ -382,7 +386,6 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         buffer[2] |= BIT(7);
     } else
         ll.sequenceNumber = 1;
-
 
     while(flag && counter < ll.numTransmissions) {
         alarm(ll.timeOut);
@@ -496,24 +499,29 @@ int read_serial(int fd, unsigned char *buf) {
     int k;
     while(1) {
         int n = 0;
-
-        n = read(fd, buf, MAX_LEN - nfr);
+		printf("READ: %d\n", iter);
+        n = read(fd, buf + nfr, MAX_LEN - nfr);
+		printf("n: %d\n", n);
 
         if( n <= 0 )
             return -1;
 
         nfr += n;
 
+		int a;
+		for( a = 0; a < nfr; a++ )
+			printf("0x%x\n", buf[a]);
+
         if( !hasFirst ) {
             //int k;
             for( k = 0; k < nfr; k++ )
                 if( buf[k] == BYTE_FLAG ) {
-                    printf("First flag: %d\n", k);
                     break;
                 }
 
             if( k < nfr ) {
                 if( k ) {
+					printf("Lflag\n");
                     memmove(buf, buf + k, nfr - k);
                     nfr -= k;
                 }
@@ -525,21 +533,18 @@ int read_serial(int fd, unsigned char *buf) {
         }
 
         if(hasFirst && nfr > 1) {
-
-            for( k = 1; k < nfr; k++ )
+			printf("Has First\n");
+            for( k = 1; k < nfr; k++ ) {
                 if( buf[k] == BYTE_FLAG ) {
                     printf("Last flag: %d\n", k);
                     break;
                 }
+			}
 
             if( k < nfr ) {
-                alarm(0);
-                break;
-                /* Para a tua mãe
-                if(nfr > k+1)
-                    memmove(buf, buf + k + 1, nfr - k + 1);
-                nfr -= (k+1);
-                hasFirst = 0;*/
+				printf("Alarm 0\n");
+				alarm(0);
+            	break;
             }
         }
 
@@ -549,5 +554,5 @@ int read_serial(int fd, unsigned char *buf) {
         iter++;
     }
 
-    return k + 1;
+    return nfr;
 }
