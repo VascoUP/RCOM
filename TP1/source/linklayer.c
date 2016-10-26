@@ -116,7 +116,24 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
 }
 
 int destuffing(unsigned char *buffer, unsigned int length) {
-    return 0;
+    int i = 0, count = 0;
+    
+    for (i = 0; i < length; i++) {
+        if (buffer[i] == BYTE_ESCAPE) {
+            memmove(&buffer[i], &buffer[i+1], length - i);
+            buffer[i] = buffer[i] ^ 0x20;
+            count++;
+        }
+    }
+
+    int newlength = length - count;
+    unsigned char *temp = realloc(buffer, newlength);
+    if (temp == NULL) {
+        return -1;
+    }
+    buffer = temp;
+    
+    return newlength;
 }
 
 int stuffing(unsigned char *buffer, unsigned int length) {
@@ -339,7 +356,7 @@ int llread(int fd, unsigned char * buffer) {
 
     int a;
     for( a = 0; a < n; a++ )
-    	printf("%c", buffer[a]);
+        printf("%c", buffer[a]);
     printf("\nEnd message\n");
 */
     return n; //return # characters read | -1 if error
