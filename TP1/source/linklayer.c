@@ -287,7 +287,7 @@ int llread(int fd, unsigned char * buffer) {
     */
     int n = -1;
     if ((n = read_serial(fd, buffer)) == TRAMA_I) {
-    	printf("Read I\n");
+        printf("Read I\n");
     
         unsigned char rr[5];
         rr[0] = BYTE_FLAG;
@@ -298,8 +298,8 @@ int llread(int fd, unsigned char * buffer) {
         
         write_serial(fd, rr, 5);
     } else {
-    	printf("Read NOTI\n");
-    	
+        printf("Read NOTI\n");
+        
         unsigned char rej[5];
         rej[0] = BYTE_FLAG;
         rej[1] = BYTE_AT;
@@ -317,7 +317,7 @@ int llread(int fd, unsigned char * buffer) {
     
     int a;
     for( a = 0; a < n; a++ ) {
-    	printf("%c", buffer[a]);
+        printf("%c", buffer[a]);
     printf("\nEnd message\n");
     
     return n; //return # characters read | -1 if error
@@ -338,7 +338,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     //unsigned char resp[
     int n = stuffing(buffer, length);
     if( n < 0 )
-    	return n;
+        return n;
     
     n += 6;
     buffer = (unsigned char *) realloc (buffer, n);
@@ -351,7 +351,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     buffer[n-1] = buffer[3];
     buffer[n-2] = BYTE_FLAG;
     
-  	while(flag && counter < ll.numTransmissions) {
+    while(flag && counter < ll.numTransmissions) {
         alarm(ll.timeOut);
         flag = 0;
         
