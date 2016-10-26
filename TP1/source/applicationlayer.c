@@ -15,10 +15,12 @@ int handler_write( /* args */ ) {
 	return 0;
 }
 
-int send_file( /* args */ ) {
+int send_file() {
 	/*
 		Chama as funcoes llwrite com as tramas I que contém a info da imagem
 	*/
+	
+	
 	return 0;
 }
 
@@ -76,6 +78,19 @@ int main(int argc, char **argv) {
 	if( info.fileDescriptor < 0 ) {
 		printf("Erro ao abrir a porta de série\n");
 		return -1;
+	}
+
+	char msg[19];
+	if( info.status == TRANSMITTER ) {
+		strcpy(msg, "Ola quero-te\n");
+		llwrite(info.fileDescriptor, (unsigned char *) msg, 13);
+
+	} else {
+		int n = llread(info.fileDescriptor, (unsigned char *) msg);
+		int a;
+		for( a = 0; a < n; a++ )
+			printf("%c", msg[a]);
+		printf("\nEnd message\n");
 	}
 
 	int count = 0;
