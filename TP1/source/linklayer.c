@@ -163,7 +163,7 @@ int llopen(int porta, int status) {
         fprintf(stderr, "Error activating the alarm\n");
         return -1;
     }
-
+/*
     unsigned char buffer[MAX_LEN];
     int k;
 
@@ -210,12 +210,12 @@ int llopen(int porta, int status) {
         write_serial(fd, ua, 5);
         printf("Recebeu mensagem, kappa fabullous!\n");
     }
-
+*/
     return fd;
 }
 
 int llclose(int fd) {
-
+/*
     int k;
     unsigned char buffer[MAX_LEN];
     unsigned char disc[5];
@@ -276,7 +276,7 @@ int llclose(int fd) {
 
         printf("Recebeu mensagem, kappa fabullous disc!\n");
     }
-
+*/
     return close_serial(fd);
 
 }
@@ -289,12 +289,17 @@ int llread(int fd, unsigned char * buffer) {
       3 - Returnar o que leu, ou negativo se deu erro
     */
     int n = -1;
-    n = read_serial(fd, buffer);
-    if ( handleMessage(n, buffer, A_T) == TRAMA_I ) {
+    unsigned char msg[255];
+    n = read_serial(fd, msg);
+    int a;
+    for( a = 0; a < n; a++ )
+        printf("%c\n", msg[a]);
+
+    if ( handleMessage(n, msg, A_T) == TRAMA_I ) {
         if( //Se sequenceNumber == 0 entao o BIT(6) == 1
-            (buffer[2] & BIT(6) && ll.sequenceNumber == 0) ||
+            (msg[2] & BIT(6) && ll.sequenceNumber == 0) ||
             //Se sequenceNumber == 1 entao o BIT(6) == 0
-            (!(buffer[2] & BIT(6)) && ll.sequenceNumber == 1)) {
+            (!(msg[2] & BIT(6)) && ll.sequenceNumber == 1)) {
             //Se nao e duplicado
             printf("Read I\n");
 
@@ -327,7 +332,7 @@ int llread(int fd, unsigned char * buffer) {
 
         write_serial(fd, rej, 5);
     }
-
+/*
     n -= 6;
     memmove(buffer, buffer + 4 * sizeof(unsigned char), n);
 
@@ -337,7 +342,7 @@ int llread(int fd, unsigned char * buffer) {
     for( a = 0; a < n; a++ )
     	printf("%c", buffer[a]);
     printf("\nEnd message\n");
-
+*/
     return n; //return # characters read | -1 if error
 }
 
@@ -368,11 +373,10 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     buffer[3] = buffer[1] ^ buffer[2];
     buffer[n-1] = buffer[3];
     buffer[n-2] = BYTE_FLAG;
-    printf("print message\n");
-    int a;
+    printf("print message\n");    int a;
     for( a = 0; a < n; a++ )
-    	printf("%x", buffer[a]);
-    printf("\nEnd message\n");
+        printf("0x%x\n", buffer[a]);
+    printf("End message\n");
 
     if( ll.sequenceNumber == 1 ) {
         ll.sequenceNumber = 0;
@@ -390,6 +394,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             flag = 0;
             if( ( k = read_serial(fd, resp) ) != -1 )
                 tr = handleMessage(k, resp, A_T);
+            printf("End read\n");
         } while( tr != TRAMA_RR && tr != TRAMA_REJ );
 
         if( tr == TRAMA_RR ) {
@@ -400,6 +405,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
 
             break;
         } else if( tr == TRAMA_REJ ) {
+            printf("REJ\n");
             counter++;
             flag = 1;
         }
