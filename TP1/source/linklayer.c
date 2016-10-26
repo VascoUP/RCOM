@@ -35,17 +35,14 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
     int i, type = UNDEFINED;
     unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
     for( i = 0; i < length; i++ ) {
-		printf("msg i : 0x%x\n", msg[i]);
         //Flag - 1
         if( f1 == 0 ) {
             if( msg[i] == BYTE_FLAG ) {
-                printf("0 FLAG: 0x%x\n", msg[i]);
                 f1 = msg[i];
             }
         //Campo de endereco (tem de vir logo a seguir à primeira Flag)
         } else if( a == 0 && i > 0 && msg[i-1] == f1 ) {
             if( (msg[i] == BYTE_AT && type_a == A_T) || (msg[i] == BYTE_AR && type_a == A_R) ) {
-                printf("1 FLAG: 0x%x\n", msg[i]);
                 a = msg[i];
             }
             else //Se nao for o campo de endereco returnar erro
@@ -56,40 +53,31 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
                 case BYTE_C_I:
                 case BYTE_C_I2:
                     type = TRAMA_I;
-                    printf("Trama I\n");
                     break;
                 case BYTE_C_SET:
                     type = TRAMA_SET;
-                    printf("Trama SET\n");
                     break;
                 case BYTE_C_DISC:
                     type = TRAMA_DISC;
-                    printf("Trama DISC\n");
                     break;
                 case BYTE_C_UA:
                     type = TRAMA_UA;
-                    printf("Trama UA\n");
                     break;
                 case BYTE_C_RR:
                 case BYTE_C_RR2:
                     type = TRAMA_RR;
-                    printf("Trama RR\n");
                     break;
                 case BYTE_C_REJ:
                 case BYTE_C_REJ2:
                     type = TRAMA_REJ;
-                    printf("Trama REJ\n");
                     break;
                 default: //Se nenhum deles corresponder a um campo de controlo valido
                     return ERR;
             }
-            printf("2 FLAG: 0x%x\n", msg[i]);
             c = msg[i];
-            printf("0x%x - 0x%x\n", a, c);
         //Campo de protecao (tem de vir antes do campo de controlo)
         } else if( msg[i-1] == c ) {
             if( (a ^ c) == msg[i] ) {
-                printf("3 FLAG: 0x%x\n", msg[i]);
                 bcc1 = msg[i];
             }
             else
@@ -97,21 +85,17 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
         //Flag - 2 (tem de vir antes do campo de protecao
         //              MENOS quando se trata de uma trama I)
         } else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc1 && bcc2 == 0 ) {
-            printf("4 FLAG: 0x%x\n", msg[i]);
             if( type != TRAMA_I )
                 return type;
             else
                 return ERR;
         //Segundo campo de protecao (so valido para tramas I)
         } else if( bcc1 != 0 && msg[i] == bcc1 && msg[i-1] != bcc1 && type == TRAMA_I ) {
-            printf("5 FLAG: %x\n", msg[i]);
             bcc2 = msg[i];
         //Flag - 2 (so valido
         } else if( bcc2 != 0 && msg[i] == BYTE_FLAG && msg[i-1] == bcc2 && type == TRAMA_I ) {
-            printf("%d\n", type);
             return type;
         }
-		printf("Len: %d\n------\n", length);
     }
 
     return -1;
@@ -152,8 +136,6 @@ int stuffing(unsigned char *buffer, unsigned int length) {
         return -1;
     }
 
-    printf("Buffer adress: %p\n", (void *) buffer);
-    printf("TEMP adress: %p\n", (void *) temp);
     buffer = temp;
 
     i = 0;
@@ -203,7 +185,6 @@ int llopen(int porta, int status) {
             flag = 0;
             if( ( k = read_serial(fd, buffer) ) != -1 ) {
                 if( handleMessage(k, buffer, A_T) == TRAMA_UA ) {
-                    printf("Recebeu mensagem, kappa\n");
                     break;
                 } else {
                     counter++;
@@ -232,7 +213,6 @@ int llopen(int porta, int status) {
         ua[3] = ua[1] ^ ua[2];
         ua[4] = BYTE_FLAG;
         write_serial(fd, ua, 5);
-        printf("Recebeu mensagem, kappa fabullous!\n");
     }
 
     return fd;
@@ -265,8 +245,6 @@ int llclose(int fd) {
             flag = 0;
             if( ( k = read_serial(fd, buffer) ) != -1 ) {
                 if( handleMessage(k, buffer, A_T) == TRAMA_DISC ) {
-                    printf("Recebeu mensagem, kappa disc\n");
-
                     flag = 1;
                     counter = 0;
 
@@ -297,8 +275,6 @@ int llclose(int fd) {
             if( k == -1 )
                 return -1;
         } while( handleMessage(k, buffer, A_R) != TRAMA_UA );
-
-        printf("Recebeu mensagem, kappa fabullous disc!\n");
     }
 
     return close_serial(fd);
@@ -316,10 +292,6 @@ int llread(int fd, unsigned char ** buffer) {
     int n = -1;
     unsigned char* msg = (unsigned char *) malloc(MAX_LEN * sizeof(char));
     n = read_serial(fd, msg);
-	printf("N: %d\n", n);
-    int a;
-    for( a = 0; a < n; a++ )
-        printf("0x%x\n", msg[a]);
 
     if ( handleMessage(n, msg, A_T) == TRAMA_I ) {
         if( //Se sequenceNumber == 0 entao o BIT(6) == 1
@@ -327,7 +299,6 @@ int llread(int fd, unsigned char ** buffer) {
             //Se sequenceNumber == 1 entao o BIT(6) == 0
             (!(msg[2] & BIT(6)) && ll.sequenceNumber == 1)) {
             //Se nao e duplicado
-            printf("Read I\n");
 
             unsigned char rr[5];
             rr[0] = BYTE_FLAG;
@@ -341,7 +312,6 @@ int llread(int fd, unsigned char ** buffer) {
             //Handle duplicado
             printf("Duplicado\n");
     } else {
-        printf("Read NOTI\n");
 
         unsigned char rej[5];
         rej[0] = BYTE_FLAG;
@@ -382,9 +352,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
     unsigned char resp[MAX_LEN];
-    printf("Buffer adress: %p\n", (void *) buffer);
     int k, tr, n = stuffing(buffer, length);
-    printf("Buffer adress 2: %p\n", (void *) buffer);
     if( n < 0 )
         return n;
 
@@ -398,11 +366,6 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     buffer[3] = buffer[1] ^ buffer[2];
     buffer[n-2] = buffer[3];
     buffer[n-1] = BYTE_FLAG;
-
-    printf("print message\n");    int a;
-    for( a = 0; a < n; a++ )
-        printf("0x%x\n", buffer[a]);
-    printf("End message\n");
 
     if( ll.sequenceNumber == 1 ) {
         ll.sequenceNumber = 0;
@@ -421,14 +384,11 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         } while( flag == 0 && tr != TRAMA_RR && tr != TRAMA_REJ );
 
         if( tr == TRAMA_RR ) {
-            printf("Recebeu mensagem, kappa ua\n");
-
             flag = 1;
             counter = 0;
 
             break;
         } else if( tr == TRAMA_REJ ) {
-            printf("REJ\n");
             counter++;
             flag = 1;
         }
@@ -457,9 +417,7 @@ int open_serial(int porta, int status) {
     ll.timeOut = 3;
     ll.numTransmissions = 3;
 
-    printf("Before Open\n");
     fd = open(ll.port, O_RDWR | O_NOCTTY);
-    printf("Abriu\n");
     if (fd < 0) {
         printf("Erro ao abrir fd\n");
         return -1;
@@ -520,18 +478,12 @@ int read_serial(int fd, unsigned char *buf) {
     int k;
     while(1) {
         int n = 0;
-		printf("READ: %d\n", iter);
         n = read(fd, buf + nfr, MAX_LEN - nfr);
-		printf("n: %d\n", n);
 
         if( n <= 0 )
             return -1;
 
         nfr += n;
-
-		int a;
-		for( a = 0; a < nfr; a++ )
-			printf("0x%x\n", buf[a]);
 
         if( !hasFirst ) {
             //int k;
@@ -542,7 +494,6 @@ int read_serial(int fd, unsigned char *buf) {
 
             if( k < nfr ) {
                 if( k ) {
-					printf("Lflag\n");
                     memmove(buf, buf + k, nfr - k);
                     nfr -= k;
                 }
@@ -554,16 +505,13 @@ int read_serial(int fd, unsigned char *buf) {
         }
 
         if(hasFirst && nfr > 1) {
-			printf("Has First\n");
             for( k = 1; k < nfr; k++ ) {
                 if( buf[k] == BYTE_FLAG ) {
-                    printf("Last flag: %d\n", k);
                     break;
                 }
 			}
 
             if( k < nfr ) {
-				printf("Alarm 0\n");
 				alarm(0);
             	break;
             }
