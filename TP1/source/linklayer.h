@@ -1,4 +1,7 @@
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #define BIT(n)      0x01 << n
 
 #define UNDEFINED   -2
@@ -31,7 +34,7 @@
 #define A_R         1
 
 #define MAX_LEN     255     //buffer's maximum size
-#define BAUDRATE    B9600   
+#define BAUDRATE    B9600
 
 #define TRANSMITTER 0       //flag that indicate that this is the transmitter
 #define RECEIVER    1       //flag that indicate that this is the receiver

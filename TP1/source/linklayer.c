@@ -368,6 +368,11 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     buffer[3] = buffer[1] ^ buffer[2];
     buffer[n-1] = buffer[3];
     buffer[n-2] = BYTE_FLAG;
+    printf("print message\n");
+    int a;
+    for( a = 0; a < n; a++ )
+    	printf("%x", buffer[a]);
+    printf("\nEnd message\n");
 
     if( ll.sequenceNumber == 1 ) {
         ll.sequenceNumber = 0;
@@ -375,10 +380,6 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     } else
         ll.sequenceNumber = 1;
 
-    int a;
-    for( a = 0; a < n; a++ )
-    	printf("%x", buffer[a]);
-    printf("\nEnd message\n");
 
     while(flag && counter < ll.numTransmissions) {
         alarm(ll.timeOut);

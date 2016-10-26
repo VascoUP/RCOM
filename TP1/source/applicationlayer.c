@@ -1,7 +1,6 @@
 
 #include "linklayer.h"
 #include <string.h>
-#include <stdio.h>
 
 typedef struct {
     int fileDescriptor;
@@ -19,8 +18,8 @@ int send_file() {
 	/*
 		Chama as funcoes llwrite com as tramas I que contém a info da imagem
 	*/
-	
-	
+
+
 	return 0;
 }
 
@@ -44,7 +43,7 @@ int main(int argc, char **argv) {
 	applicationLayer info;
 	int port;
 
-	if( strcmp("receiver", argv[1])==0 ) { 
+	if( strcmp("receiver", argv[1])==0 ) {
 		if( argc != 3 ) {
 			printf("1 - Falta argumentos\n");
 			return -1;
@@ -53,7 +52,7 @@ int main(int argc, char **argv) {
 		info.status = RECEIVER;
 
 	}
-	else if( strcmp("transmitter", argv[1])==0 ) { 
+	else if( strcmp("transmitter", argv[1])==0 ) {
 		if( argc != 4 ) {
 			printf("2 - Falta argumentos\n");
 			return -1;
@@ -80,18 +79,20 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 
-	char msg[19];
+	char *msg = (char *) malloc(13 * sizeof(char));
 	if( info.status == TRANSMITTER ) {
 		strcpy(msg, "Ola quero-te\n");
 		llwrite(info.fileDescriptor, (unsigned char *) msg, 13);
 
 	} else {
+        printf("Reading app\n");
 		int n = llread(info.fileDescriptor, (unsigned char *) msg);
 		int a;
 		for( a = 0; a < n; a++ )
 			printf("%c", msg[a]);
 		printf("\nEnd message\n");
 	}
+    free(msg);
 
 	int count = 0;
 	do {
