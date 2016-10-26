@@ -117,11 +117,34 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
 }
 
 int destuffing(unsigned char *buffer, unsigned int length) {
-	return 0;
+    return 0;
 }
 
 int stuffing(unsigned char *buffer, unsigned int length) {
-	return 0;
+    int i = 0, count = 0;
+    for (i = 0; i < length; i++) {
+        if (buffer[i] == BYTE_FLAG || buffer[i] == BYTE_ESCAPE) {
+            count++;
+        }
+    }
+
+    int newlength = length + count;
+    unsigned char *temp = realloc(buffer, newlength);
+    if (temp == NULL) {
+        return -1;
+    }
+    buffer = temp;
+
+    i = 0;
+    for (i = 0; i < newlength; i++) {
+        if (buffer[i] == BYTE_FLAG || buffer[i] == BYTE_ESCAPE) {
+            memmove(&buffer[i + 1], &buffer[i], newlength - i + 1);
+            buffer[i] = BYTE_ESCAPE;
+            buffer[i+1] = buffer[i+1] ^ 0x20;
+        }
+    }
+    
+    return newlength;
 }
 
 int llopen(int porta, int status) {
