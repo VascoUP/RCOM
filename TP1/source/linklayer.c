@@ -9,6 +9,12 @@
 #include <termios.h>
 #include <unistd.h>
 #include <signal.h>
+/*
+TO DO:
+    - Usar build_frame_us em todas as situacoes possiveis quando estiver testado
+    - Testar build_frame_i, depois de testada, substituir em todas as situacoes possiveis
+    - Adicionar mais quando nos formos lembrando
+*/
 
 static linklayer ll;
 static struct termios oldtio;
@@ -175,15 +181,16 @@ int llopen(int porta, int status) {
     int k;
 
     if( ll.status == TRANSMITTER ) {
-        unsigned char set[5];
+        unsigned char *set = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_SET);
+        /*unsigned char set[FRAMA_US_LEN];
         set[0] = BYTE_FLAG;
         set[1] = BYTE_AT;
         set[2] = BYTE_C_SET;
         set[3] = set[1] ^ set[2];
-        set[4] = BYTE_FLAG;
+        set[4] = BYTE_FLAG;*/
 
         while(flag && counter < ll.numTransmissions) {
-            if( write_serial(fd, set, 5) == -1 ) return -1;
+            if( write_serial(fd, set, FRAMA_US_LEN) == -1 ) return -1;
             alarm(ll.timeOut);
             flag = 0;
             if( ( k = read_serial(fd, buffer) ) != -1 ) {
@@ -208,14 +215,16 @@ int llopen(int porta, int status) {
             if( k == -1 )
                 return -1;
         } while( handleMessage(k, buffer, A_T) != TRAMA_SET );
-
-        unsigned char ua[5];
+        
+        unsigned char *ua = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_UA);
+        
+        /*unsigned char ua[FRAMA_US_LEN];
         ua[0] = BYTE_FLAG;
         ua[1] = BYTE_AT;
         ua[2] = BYTE_C_UA;
         ua[3] = ua[1] ^ ua[2];
-        ua[4] = BYTE_FLAG;
-        write_serial(fd, ua, 5);
+        ua[4] = BYTE_FLAG;*/
+        write_serial(fd, ua, FRAMA_US_LEN);
     }
 
     return fd;
@@ -225,8 +234,8 @@ int llclose(int fd) {
     printf("Closing...\n");
     int k;
     unsigned char buffer[MAX_LEN];
-    unsigned char disc[5];
-    unsigned char ua[5];
+    unsigned char disc[FRAMA_US_LEN];
+    unsigned char ua[FRAMA_US_LEN];
 
     disc[0] = BYTE_FLAG;
     disc[1] = BYTE_AT;
@@ -243,7 +252,7 @@ int llclose(int fd) {
     if( ll.status == TRANSMITTER ) {
 
         while(flag && counter < ll.numTransmissions) {
-            if( write_serial(fd, disc, 5) == -1 ) return -1;
+            if( write_serial(fd, disc, FRAMA_US_LEN) == -1 ) return -1;
             alarm(ll.timeOut);
             flag = 0;
             if( ( k = read_serial(fd, buffer) ) != -1 ) {
@@ -260,7 +269,7 @@ int llclose(int fd) {
         }
 
         do {
-            k = write_serial(fd, ua, 5); //return -1;
+            k = write_serial(fd, ua, FRAMA_US_LEN); //return -1;
             counter++;
         } while(counter < ll.numTransmissions && k > 0);
 
@@ -271,7 +280,7 @@ int llclose(int fd) {
                 return -1;
         } while( handleMessage(k, buffer, A_T) != TRAMA_DISC );
 
-        write_serial(fd, disc, 5);
+        write_serial(fd, disc, FRAMA_US_LEN);
 
         do {
             k = read_serial(fd, buffer);
@@ -303,20 +312,20 @@ int llread(int fd, unsigned char ** buffer) {
             (!(msg[2] & BIT(6)) && ll.sequenceNumber == 1)) {
             //Se nao e duplicado
 
-            unsigned char rr[5];
+            unsigned char rr[FRAMA_US_LEN];
             rr[0] = BYTE_FLAG;
             rr[1] = BYTE_AT;
             rr[2] = BYTE_C_RR;
             rr[3] = rr[1] ^ rr[2];
             rr[4] = BYTE_FLAG;
 
-            write_serial(fd, rr, 5);
+            write_serial(fd, rr, FRAMA_US_LEN);
         } else
             //Handle duplicado
             printf("Duplicado\n");
     } else {
 
-        unsigned char rej[5];
+        unsigned char rej[FRAMA_US_LEN];
         rej[0] = BYTE_FLAG;
         rej[1] = BYTE_AT;
         rej[2] = BYTE_C_REJ;
@@ -329,7 +338,7 @@ int llread(int fd, unsigned char ** buffer) {
         } else
             ll.sequenceNumber = 1;
 
-        write_serial(fd, rej, 5);
+        write_serial(fd, rej, FRAMA_US_LEN);
     }
 
     n -= 6;
@@ -592,7 +601,7 @@ unsigned char* build_frame_i(char address, int sequence_number, unsigned char *d
 }*/
 
 unsigned char* build_frame_us(char address, int sequence_number, int type) {
-    unsigned char *frame = malloc(sizeof(char) * 5);
+    unsigned char *frame = malloc(sizeof(char) * FRAMA_US_LEN);
     if (frame == NULL) {
         return NULL;
     }

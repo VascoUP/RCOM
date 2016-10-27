@@ -30,6 +30,8 @@
 #define TRAMA_RR    4
 #define TRAMA_REJ   5
 
+#define FRAMA_US_LEN    5
+
 #define A_T         0
 #define A_R         1
 

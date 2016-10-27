@@ -25,7 +25,7 @@ unsigned char* loadImage(char *path) {
 
 int handler_write( /* args */ ) {
     /*
-        Nao sei se e preciso, so usado se no futuro precisarmos
+        Meter a informacao da imagem no formato certo
     */
     return 0;
 }
