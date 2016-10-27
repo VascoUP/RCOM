@@ -333,7 +333,7 @@ int llread(int fd, unsigned char ** buffer) {
     memmove(msg, msg + 4 * sizeof(unsigned char), n);
 
     destuffing(msg, n);
-	*buffer = msg;
+    *buffer = msg;
 
     return n; //return # characters read | -1 if error
 }
@@ -509,11 +509,11 @@ int read_serial(int fd, unsigned char *buf) {
                 if( buf[k] == BYTE_FLAG ) {
                     break;
                 }
-			}
+            }
 
             if( k < nfr ) {
-				alarm(0);
-            	break;
+                alarm(0);
+                break;
             }
         }
 
@@ -525,3 +525,69 @@ int read_serial(int fd, unsigned char *buf) {
 
     return nfr;
 }
+
+
+unsigned char* build_frame_i(char address, int sequence_number, unsigned char *data, int *length) {
+    int frame_length = *length + 6;
+    unsigned char *frame = malloc(sizeof(char) * frame_length);
+    if (frame == NULL) {
+        return NULL;
+    }
+
+    frame[0] = BYTE_FLAG;
+    frame[1] = address;
+    frame[2] = BYTE_C_I | ((sequence_number) ? BIT(6) : 0);
+    frame[3] = frame[1] ^ frame[2];
+
+    unsigned char bcc2 = data[0];
+    int i;
+    for(i = 1; i < *length; i++) {
+        bcc2 ^= data[i];
+    }
+
+    memmove(&frame[4], data, *length);
+
+    frame[frame_length-2] = bcc2;
+    frame[frame_length-1] = BYTE_FLAG;
+    *length = frame_length;
+    return frame;
+}
+
+unsigned char* build_frame_us(char address, int sequence_number, int type) {
+    unsigned char *frame = malloc(sizeof(char) * 5);
+    if (frame == NULL) {
+        return NULL;
+    }
+
+    frame[0] = BYTE_FLAG;
+    frame[1] = address;
+
+    switch (type) {
+        case TRAMA_SET:
+            frame[2] = BYTE_C_SET;
+            break;
+        case TRAMA_DISC:
+            frame[2] = BYTE_C_DISC;
+            break;
+        case TRAMA_UA:
+            frame[2] = BYTE_C_UA;
+            break;
+        case TRAMA_RR:
+            frame[2] = BYTE_C_RR | ((sequence_number) ? BIT(7) : 0);
+            break;
+        case TRAMA_REJ:
+            frame[2] = BYTE_C_REJ | ((sequence_number) ? BIT(7) : 0);
+            break;
+        default:
+            return NULL;
+    }
+
+    frame[3] = frame[1] ^ frame[2];
+    frame[4] = BYTE_FLAG;
+    return frame;
+}
+
+void free_frame(unsigned char *frame) {
+    free(frame);
+}
+
