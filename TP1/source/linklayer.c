@@ -290,7 +290,7 @@ int llread(int fd, unsigned char ** buffer) {
       3 - Returnar o que leu, ou negativo se deu erro
     */
     int n = -1;
-    unsigned char* msg = (unsigned char *) malloc(MAX_LEN * sizeof(char));
+    unsigned char* msg =  malloc(MAX_LEN * sizeof(char));
     n = read_serial(fd, msg);
 
     if ( handleMessage(n, msg, A_T) == TRAMA_I ) {
@@ -357,7 +357,11 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         return n;
 
     n += 6;
-    buffer = (unsigned char *) realloc (buffer, n);
+    unsigned char *temp = realloc(buffer, n);
+    if (temp == NULL) {
+        return -1;
+    }
+    buffer = temp;
     memmove(buffer + 4 * sizeof(unsigned char), buffer, n - 6);
 
     buffer[0] = BYTE_FLAG;
