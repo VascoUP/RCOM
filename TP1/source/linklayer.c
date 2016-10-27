@@ -17,13 +17,16 @@ static int counter = 0;
 
 static int handleMessage(unsigned int length, unsigned char msg[], int type_a);
 
-static int destuffing(unsigned char *buffer, unsigned int length);
-static int stuffing(unsigned char *buffer, unsigned int length);
+static int destuffing(unsigned char **buffer, unsigned int length);
+static int stuffing(unsigned char **buffer, unsigned int length);
 
 static int open_serial(int porta, int status);
 static int close_serial(int fd);
 static int write_serial(int fd, unsigned char msg[], unsigned int length);
 static int read_serial(int fd, unsigned char *buf);
+
+static unsigned char* build_frame_us(char address, int sequence_number, int type);
+static int build_frame_i(char address, int sequence_number, unsigned char **data, unsigned int length);
 
 void atende() {
     printf("alarme #%d\n", ++counter);
@@ -101,49 +104,49 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
     return -1;
 }
 
-int destuffing(unsigned char *buffer, unsigned int length) {
+int destuffing(unsigned char **buffer, unsigned int length) {
     int i = 0, count = 0;
 
     for (i = 0; i < length; i++) {
-        if (buffer[i] == BYTE_ESCAPE) {
-            memmove(&buffer[i], &buffer[i+1], length - i);
-            buffer[i] = buffer[i] ^ 0x20;
+        if (*buffer[i] == BYTE_ESCAPE) {
+            memmove(*buffer + i, *buffer + i + 1, length - i);
+            *buffer[i] = *buffer[i] ^ 0x20;
             count++;
         }
     }
 
     int newlength = length - count;
-    unsigned char *temp = realloc(buffer, newlength);
+    unsigned char *temp = realloc(*buffer, newlength * sizeof(unsigned char));
     if (temp == NULL) {
         return -1;
     }
-    buffer = temp;
+    *buffer = temp;
 
     return newlength;
 }
 
-int stuffing(unsigned char *buffer, unsigned int length) {
+int stuffing(unsigned char **buffer, unsigned int length) {
     int i = 0, count = 0;
     for (i = 0; i < length; i++) {
-        if (buffer[i] == BYTE_FLAG || buffer[i] == BYTE_ESCAPE) {
+        if (*buffer[i] == BYTE_FLAG || *buffer[i] == BYTE_ESCAPE) {
             count++;
         }
     }
 
     int newlength = length + count;
-    unsigned char *temp = realloc(buffer, newlength);
+    unsigned char *temp = realloc(*buffer, newlength * sizeof(unsigned char));
     if (temp == NULL) {
         return -1;
     }
 
-    buffer = temp;
+    *buffer = temp;
 
     i = 0;
     for (i = 0; i < newlength; i++) {
-        if (buffer[i] == BYTE_FLAG || buffer[i] == BYTE_ESCAPE) {
-            memmove(&buffer[i + 1], &buffer[i], newlength - i);
-            buffer[i] = BYTE_ESCAPE;
-            buffer[i+1] = buffer[i+1] ^ 0x20;
+        if (*buffer[i] == BYTE_FLAG || *buffer[i] == BYTE_ESCAPE) {
+            memmove(*buffer + i + 1, *buffer + i, newlength - i);
+            *buffer[i] = BYTE_ESCAPE;
+            *buffer[i+1] = *buffer[i+1] ^ 0x20;
         }
     }
 
@@ -315,7 +318,7 @@ int llread(int fd, unsigned char ** buffer) {
 
         unsigned char rej[5];
         rej[0] = BYTE_FLAG;
-        rej[1] = BYTE_AT;
+        rej[1] = BYTE_AT;memmove
         rej[2] = BYTE_C_REJ;
         rej[3] = rej[1] ^ rej[2];
         rej[4] = BYTE_FLAG;
@@ -332,7 +335,7 @@ int llread(int fd, unsigned char ** buffer) {
     n -= 6;
     memmove(msg, msg + 4 * sizeof(unsigned char), n);
 
-    destuffing(msg, n);
+    destuffing(&msg, n);
     *buffer = msg;
 
     return n; //return # characters read | -1 if error
@@ -352,7 +355,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
     unsigned char resp[MAX_LEN];
-    int k, tr, n = stuffing(buffer, length);
+    int k, tr, n = stuffing(&buffer, length);
     if( n < 0 )
         return n;
 
@@ -530,21 +533,21 @@ int read_serial(int fd, unsigned char *buf) {
     return nfr;
 }
 
-int build_frame_i_vasco(char address, int sequence_number, unsigned char **data, unsigned int length) {
+int build_frame_i(char address, int sequence_number, unsigned char **data, unsigned int length) {
     unsigned int frame_length = length + 6;
-    unsigned char *frame = realloc(*data, sizeof(unsigned char) * frame_length);
-    if (frame == NULL) {
+    unsigned char *tmp = realloc(*data, sizeof(unsigned char) * frame_length);
+    if (tmp == NULL) {
         printf("build_frame_i() : Error reallocating memory\n");
         return -1;
     }
 
-    *data = frame;
+    *data = tmp;
     memmove(*data + 4, data, length);
 
     *data[0] = BYTE_FLAG;
     *data[1] = address;
     *data[2] = BYTE_C_I | ((sequence_number) ? BIT(6) : 0);
-    *data[3] = frame[1] ^ frame[2];
+    *data[3] = *data[1] ^ *data[2];
 
     unsigned char bcc2 = *data[0];
     int i;
@@ -561,7 +564,7 @@ int build_frame_i_vasco(char address, int sequence_number, unsigned char **data,
 
     return frame_length;
 }
-
+/*
 unsigned char* build_frame_i(char address, int sequence_number, unsigned char *data, int *length) {
     int frame_length = *length + 6;
     unsigned char *frame = malloc(sizeof(char) * frame_length);
@@ -586,7 +589,7 @@ unsigned char* build_frame_i(char address, int sequence_number, unsigned char *d
     frame[frame_length-1] = BYTE_FLAG;
     *length = frame_length;
     return frame;
-}
+}*/
 
 unsigned char* build_frame_us(char address, int sequence_number, int type) {
     unsigned char *frame = malloc(sizeof(char) * 5);
