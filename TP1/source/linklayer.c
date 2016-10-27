@@ -114,9 +114,9 @@ int destuffing(unsigned char **buffer, unsigned int length) {
     int i = 0, count = 0;
 
     for (i = 0; i < length; i++) {
-        if (*buffer[i] == BYTE_ESCAPE) {
+        if (*(*buffer + i) == BYTE_ESCAPE) {
             memmove(*buffer + i, *buffer + i + 1, length - i);
-            *buffer[i] = *buffer[i] ^ 0x20;
+            *(*buffer + i) = *(*buffer + i) ^ 0x20;
             count++;
         }
     }
@@ -134,7 +134,7 @@ int destuffing(unsigned char **buffer, unsigned int length) {
 int stuffing(unsigned char **buffer, unsigned int length) {
     int i = 0, count = 0;
     for (i = 0; i < length; i++) {
-        if (*buffer[i] == BYTE_FLAG || *buffer[i] == BYTE_ESCAPE) {
+        if (*(*buffer + i) == BYTE_FLAG || *(*buffer + i) == BYTE_ESCAPE) {
             count++;
         }
     }
@@ -144,15 +144,14 @@ int stuffing(unsigned char **buffer, unsigned int length) {
     if (temp == NULL) {
         return -1;
     }
-
     *buffer = temp;
 
     i = 0;
     for (i = 0; i < newlength; i++) {
-        if (*buffer[i] == BYTE_FLAG || *buffer[i] == BYTE_ESCAPE) {
+        if (*(*buffer + i) == BYTE_FLAG || *(*buffer + i) == BYTE_ESCAPE) {
             memmove(*buffer + i + 1, *buffer + i, newlength - i);
-            *buffer[i] = BYTE_ESCAPE;
-            *buffer[i+1] = *buffer[i+1] ^ 0x20;
+            *(*buffer + i) = BYTE_ESCAPE;
+            *(*buffer + i + 1) = *(*buffer + i + 1) ^ 0x20;
         }
     }
 
@@ -637,4 +636,3 @@ unsigned char* build_frame_us(char address, int sequence_number, int type) {
 void free_frame(unsigned char *frame) {
     free(frame);
 }
-
