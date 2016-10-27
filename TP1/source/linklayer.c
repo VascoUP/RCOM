@@ -545,30 +545,25 @@ int build_frame_i(char address, int sequence_number, unsigned char **data, unsig
     unsigned int frame_length = length + 6;
     unsigned char *tmp = realloc(*data, sizeof(unsigned char) * frame_length);
     if (tmp == NULL) {
-        printf("build_frame_i() : Error reallocating memory\n");
         return -1;
     }
 
     *data = tmp;
-    memmove(*data + 4, data, length);
+    memmove(*data + 4, *data, length);
 
-    *data[0] = BYTE_FLAG;
-    *data[1] = address;
-    *data[2] = BYTE_C_I | ((sequence_number) ? BIT(6) : 0);
-    *data[3] = *data[1] ^ *data[2];
+    *(*data) = BYTE_FLAG;
+    *(*data + 1) = address;
+    *(*data + 2) = BYTE_C_I | ((sequence_number) ? BIT(6) : 0);
+    *(*data + 3) = *(*data + 1) ^ *(*data + 2);
 
-    unsigned char bcc2 = *data[0];
+    unsigned char bcc2 = *(*data);
     int i;
     for(i = 1; i < length; i++) {
-        bcc2 ^= *data[i];
+        bcc2 ^= *(*data + i);
     }
 
-    *data[frame_length-2] = bcc2;
-    *data[frame_length-1] = BYTE_FLAG;
-
-    //Printf to check if there's an error (remove after it's done)
-    for(i = 0; i < frame_length; i++) 
-        printf("%i : 0x%02x\n", i, *data[i]);
+    *(*data + frame_length - 2) = bcc2;
+    *(*data + frame_length - 1) = BYTE_FLAG;
 
     return frame_length;
 }
@@ -636,3 +631,4 @@ unsigned char* build_frame_us(char address, int sequence_number, int type) {
 void free_frame(unsigned char *frame) {
     free(frame);
 }
+
