@@ -318,7 +318,7 @@ int llread(int fd, unsigned char ** buffer) {
 
         unsigned char rej[5];
         rej[0] = BYTE_FLAG;
-        rej[1] = BYTE_AT;memmove
+        rej[1] = BYTE_AT;
         rej[2] = BYTE_C_REJ;
         rej[3] = rej[1] ^ rej[2];
         rej[4] = BYTE_FLAG;

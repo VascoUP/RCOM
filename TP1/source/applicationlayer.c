@@ -7,7 +7,7 @@ typedef struct {
     int status;         //TRANSMITTER | RECEIVER
 } applicationLayer;
 
-char* loadImage(char *path) {
+unsigned char* loadImage(char *path) {
     int length;
     
     FILE *fp;
@@ -17,7 +17,7 @@ char* loadImage(char *path) {
     length = ftell(fp);
     rewind(fp);
 
-    char *data = malloc(sizeof(char) * (length + 1));
+    unsigned char *data = malloc(sizeof(char) * (length + 1));
     fread(data, length, 1, fp);
 
     return data;
