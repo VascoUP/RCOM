@@ -196,6 +196,7 @@ int llopen(int porta, int status) {
                 if( handleMessage(k, buffer, A_T) == TRAMA_UA ) {
                     break;
                 } else {
+                    alarm(0);
                     counter++;
                     flag = 1;
                 }
@@ -244,15 +245,18 @@ int llclose(int fd) {
 
         while(flag && counter < ll.numTransmissions) {
             if( write_serial(fd, disc, FRAMA_US_LEN) == -1 ) return -1;
+            printf("DISC\n");
             alarm(ll.timeOut);
             flag = 0;
             if( ( k = read_serial(fd, buffer) ) != -1 ) {
                 if( handleMessage(k, buffer, A_T) == TRAMA_DISC ) {
+                    printf("DISC\n");
                     flag = 1;
                     counter = 0;
 
                     break;
                 } else {
+                    alarm(0);
                     counter++;
                     flag = 1;
                 }
@@ -260,9 +264,12 @@ int llclose(int fd) {
         }
 
         do {
-            k = write_serial(fd, ua, FRAMA_US_LEN); //return -1;
-            counter++;
-        } while(counter < ll.numTransmissions && k > 0);
+          if( write_serial(fd, ua, FRAMA_US_LEN) != -1 ) {
+            printf("UA\n");
+            break;
+          }
+          counter++;
+       } while(counter < ll.numTransmissions && k > 0);
 
     } else {
         do {
@@ -373,6 +380,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
 
             break;
         } else if( tr == TRAMA_REJ ) {
+            alarm(0);
             counter++;
             flag = 1;
         }
@@ -556,11 +564,11 @@ unsigned char* build_frame_us(char address, int sequence_number, int type) {
             break;
         case TRAMA_RR:
             frame[2] = BYTE_C_RR | ((sequence_number) ? BIT(7) : 0);
-			printf("RR: 0x%02x\n", frame[2]);
+			      printf("RR: 0x%02x\n", frame[2]);
             break;
         case TRAMA_REJ:
             frame[2] = BYTE_C_REJ | ((sequence_number) ? BIT(7) : 0);
-			printf("REJ: 0x%02x\n", frame[2]);
+			      printf("REJ: 0x%02x\n", frame[2]);
             break;
         default:
             return NULL;
@@ -568,6 +576,11 @@ unsigned char* build_frame_us(char address, int sequence_number, int type) {
 
     frame[3] = frame[1] ^ frame[2];
     frame[4] = BYTE_FLAG;
+
+    int i;
+    for( i = 0; i < 5; i++ )
+      printf("Char: 0x%02x\n", frame[i]);
+
     return frame;
 }
 
