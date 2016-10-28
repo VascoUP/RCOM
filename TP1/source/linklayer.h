@@ -30,6 +30,11 @@
 #define TRAMA_RR    4
 #define TRAMA_REJ   5
 
+/* Macros used to identify the type of packet */
+#define DATA_PACKET     1
+#define START_PACKET    2
+#define END_PACKET      3
+
 #define FRAMA_US_LEN    5
 
 #define A_T         0
