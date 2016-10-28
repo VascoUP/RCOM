@@ -22,11 +22,11 @@ unsigned char* load_file(char *path, int *length) {
     return data;
 }
 
-unsigned char* build_control_packet( unsigned int control, int file_size, char *file_name ) {
+unsigned char* build_control_packet( unsigned int control, int file_size, char *file_name, int *length ) {
   const int fn_length = strlen(file_name);
-  const int nBytes = 7 + fn_length;
+  *length = 7 + fn_length;
 
-  unsigned char *packet = malloc(nBytes);
+  unsigned char *packet = malloc(*length);
   if( packet == NULL )
     return NULL;
 
@@ -38,10 +38,6 @@ unsigned char* build_control_packet( unsigned int control, int file_size, char *
   packet[5] = 1;
   packet[6] = fn_length;
   memcpy(packet + 7, file_name, fn_length);
-
-  int i;
-  for ( i = 0; i < nBytes; i++ )
-    printf("Value: %c\n", packet[i]);
 
   return packet;
 }
@@ -61,13 +57,15 @@ int build_data_packet( unsigned int control, unsigned int sequenceNumber, unsign
   return 0;
 }
 
-int send_file(char *file) {
+int send_file(int fd, char *file) {
   int file_size;
+  int length;
   load_file(file, &file_size);
 
   printf("%d\n", file_size);
 
-  unsigned char *control = build_control_packet(2, file_size, file);
+  unsigned char *control = build_control_packet(2, file_size, file, &length);
+  llwrite( fd, control, length );
 
   return 0;
 }
@@ -129,7 +127,13 @@ int main(int argc, char **argv) {
   }
 
   if( info.status == TRANSMITTER ) {
-     send_file(file);
+     send_file(info.fileDescriptor, file);
+  } else {
+    unsigned char* buf = NULL;
+    int n = llread( info.fileDescriptor, &buf);
+    int i;
+    for( i = 0; i < n; i++ )
+      printf("0x%02x\n", buf[i]);
   }
 
   int count = 0;
