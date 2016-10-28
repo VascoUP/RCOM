@@ -68,6 +68,8 @@ int send_file(char *file) {
 
     printf("%d\n", file_size);
 
+    //unsigned char *data = build_control_packet(2, t, l, v); 
+
     return 0;
 }
 
