@@ -548,6 +548,15 @@ int read_serial(int fd, unsigned char *buf) {
 
 int build_frame_i(char address, int sequence_number, unsigned char **data, unsigned int length) {
     unsigned int frame_length = length + 6;
+    unsigned char bcc2 = *(*data);
+    printf("BCC2: 0x%02x\n", bcc2);
+    int i;
+    for(i = 1; i < length; i++) {
+        bcc2 ^= (*data)[i];
+        printf("BCC2: 0x%02x\n", bcc2);
+    }
+    printf("BCC2: 0x%02x\n", bcc2);
+
     unsigned char *tmp = realloc(*data, sizeof(unsigned char) * frame_length);
     if (tmp == NULL) {
         return -1;
@@ -561,18 +570,15 @@ int build_frame_i(char address, int sequence_number, unsigned char **data, unsig
     *(*data + 2) = BYTE_C_I | ((sequence_number) ? BIT(6) : 0);
     *(*data + 3) = *(*data + 1) ^ *(*data + 2);
 
-    unsigned char bcc2 = *(*data);
-    int i;
+  /*  int i;
     for(i = 1; i < length; i++) {
-        bcc2 ^= *(*data + i);
-    }
+        bcc2 ^= (*data)[i];
+        printf("BCC2: 0x%02x\n", bcc2);
+    }*/
+
 
     *(*data + frame_length - 2) = bcc2;
     *(*data + frame_length - 1) = BYTE_FLAG;
-
-    int a;
-    for( a = 0; a < frame_length; a++ ) 
-	printf("DATA: 0x%02x\n", (*data)[a]);
 
     return frame_length;
 }
