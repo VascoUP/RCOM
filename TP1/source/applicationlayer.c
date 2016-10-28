@@ -61,9 +61,17 @@ int send_file(int fd, char *file) {
   int file_size;
   int length;
 
-  load_file(file, &file_size);
+  unsigned char *loaded_file = load_file(file, &file_size);
+
   unsigned char *control = build_control_packet(2, file_size, file, &length);
   llwrite( fd, control, length );
+  free(control);
+
+  control = build_control_packet(3, file_size, file, &length);
+  llwrite( fd, control, length );
+  free(control);
+
+  free(loaded_file);
 
   return 0;
 }
@@ -128,6 +136,7 @@ int main(int argc, char **argv) {
      send_file(info.fileDescriptor, file);
   } else {
     unsigned char* buf = NULL;
+    llread( info.fileDescriptor, &buf);
     llread( info.fileDescriptor, &buf);
   }
 
