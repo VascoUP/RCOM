@@ -266,14 +266,15 @@ int llclose(int fd) {
             if( k == -1 )
                 return -1;
         } while( handleMessage(k, buffer, A_T) != TRAMA_DISC );
-
+		printf("DISC\n");
         write_serial(fd, disc, FRAMA_US_LEN);
-
+		printf("DISC\n");
         do {
             k = read_serial(fd, buffer);
             if( k == -1 )
                 return -1;
         } while( handleMessage(k, buffer, A_R) != TRAMA_UA );
+		printf("UA\n");
     }
 
     return close_serial(fd);
@@ -298,34 +299,13 @@ int llread(int fd, unsigned char ** buffer) {
             //Se sequenceNumber == 1 entao o BIT(6) == 0
             (!(msg[2] & BIT(6)) && ll.sequenceNumber == 1)) {
             //Se nao e duplicado
-
-            unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, BYTE_C_RR);
-            /*rr[0] = BYTE_FLAG;
-            rr[1] = BYTE_AT;
-            rr[2] = BYTE_C_RR;
-            rr[3] = rr[1] ^ rr[2];
-            rr[4] = BYTE_FLAG;*/
-
+            unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_RR);
             write_serial(fd, rr, FRAMA_US_LEN);
         } else
             //Handle duplicado
             printf("Duplicado\n");
     } else {
-
-        unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, BYTE_C_REJ);
-        /*unsigned char rej[FRAMA_US_LEN];
-        rej[0] = BYTE_FLAG;
-        rej[1] = BYTE_AT;
-        rej[2] = BYTE_C_REJ;
-        rej[3] = rej[1] ^ rej[2];
-        rej[4] = BYTE_FLAG;*/
-
-        if( ll.sequenceNumber == 1 ) {
-            ll.sequenceNumber = 0;
-            rej[2] |= BIT(7);
-        } else
-            ll.sequenceNumber = 1;
-
+        unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
         write_serial(fd, rej, FRAMA_US_LEN);
     }
 
@@ -563,13 +543,15 @@ unsigned char* build_frame_us(char address, int sequence_number, int type) {
             break;
         case TRAMA_RR:
             frame[2] = BYTE_C_RR | ((sequence_number) ? BIT(7) : 0);
+			printf("RR: 0x%02x\n", frame[2]);
             break;
         case TRAMA_REJ:
             frame[2] = BYTE_C_REJ | ((sequence_number) ? BIT(7) : 0);
+			printf("REJ: 0x%02x\n", frame[2]);
             break;
         default:
             return NULL;
-    }
+    } 
 
     frame[3] = frame[1] ^ frame[2];
     frame[4] = BYTE_FLAG;
