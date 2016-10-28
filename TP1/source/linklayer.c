@@ -41,10 +41,10 @@ void atende() {
 
 // !!NOT FINISHED!!
 int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
-    int i, type = UNDEFINED;
-    unsigned char dataBcc = 0;
+int i, type = UNDEFINED;
+unsigned char dataBcc = 0;
 
-    unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
+unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
     for( i = 0; i < length; i++ ) {
         //Flag - 1
         if( f1 == 0 ) {
@@ -54,38 +54,38 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
         //Campo de endereco (tem de vir logo a seguir à primeira Flag)
         } else if( a == 0 && i > 0 && msg[i-1] == f1 ) {
             if( (msg[i] == BYTE_AT && type_a == A_T) || (msg[i] == BYTE_AR && type_a == A_R) ) {
-                a = msg[i];
+              a = msg[i];
             }
             else //Se nao for o campo de endereco returnar erro
-                return ERR;
+              return ERR;
         //Campo de controlo (tem de vir logo a seguir ao campo de endereco)
         } else if( msg[i-1] == a && type == UNDEFINED ) {
             switch( msg[i] ) {
-                case BYTE_C_I:
-                case BYTE_C_I2:
-                    type = TRAMA_I;
-                    break;
-                case BYTE_C_SET:
-                    type = TRAMA_SET;
-                    break;
-                case BYTE_C_DISC:
-                    type = TRAMA_DISC;
-                    break;
-                case BYTE_C_UA:
-                    type = TRAMA_UA;
-                    break;
-                case BYTE_C_RR:
-                case BYTE_C_RR2:
-                    type = TRAMA_RR;
-                    break;
-                case BYTE_C_REJ:
-                case BYTE_C_REJ2:
-                    type = TRAMA_REJ;
-                    break;
-                default: //Se nenhum deles corresponder a um campo de controlo valido
-                    return ERR;
+            case BYTE_C_I:
+            case BYTE_C_I2:
+                type = TRAMA_I;
+                  break;
+            case BYTE_C_SET:
+                type = TRAMA_SET;
+                break;
+            case BYTE_C_DISC:
+                type = TRAMA_DISC;
+                break;
+            case BYTE_C_UA:
+                type = TRAMA_UA;
+                break;
+            case BYTE_C_RR:
+            case BYTE_C_RR2:
+                type = TRAMA_RR;
+                break;
+            case BYTE_C_REJ:
+            case BYTE_C_REJ2:
+                type = TRAMA_REJ;
+                break;
+            default: //Se nenhum deles corresponder a um campo de controlo valido
+                return ERR;
             }
-            c = msg[i];
+              c = msg[i];
         //Campo de protecao (tem de vir antes do campo de controlo)
         } else if( msg[i-1] == c && bcc1 == 0 ) {
             if( (a ^ c) == msg[i] ) {
@@ -100,21 +100,17 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
                 return type;
             else
                 return ERR;
-        //Segundo campo de protecao (so valido para tramas I)
-        /*} else if( bcc1 != 0 && msg[i] == bcc1 && msg[i-1] != bcc1 && type == TRAMA_I ) {
-            bcc2 = msg[i];*/
-
         } else if( /*bcc2 != 0 && */ msg[i] == BYTE_FLAG /*&& msg[i-1] == bcc2*/ && type == TRAMA_I ) {
-			if( msg[i-1] == dataBcc )
-		    	return type;
+            if( msg[i-1] == dataBcc )
+                return type;
         } else if(bcc1 != 0) {
-			if( dataBcc == 0 ) {
-				dataBcc = msg[i];
-			}
-			else if( i + 1 != length && msg[i+1] != BYTE_FLAG) {
-				dataBcc ^= msg[i];
-			}
-		}
+            if( dataBcc == 0 ) {
+                dataBcc = msg[i];
+            }
+            else if( i + 1 != length && msg[i+1] != BYTE_FLAG) {
+                dataBcc ^= msg[i];
+            }
+        }
     }
 
     return -1;
@@ -213,19 +209,19 @@ int llopen(int porta, int status) {
         flag = 1;
         counter = 0;
 
-	free(set);
+	      free(set);
     } else {
         do {
             k = read_serial(fd, buffer);
             if( k == -1 )
                 return -1;
         } while( handleMessage(k, buffer, A_T) != TRAMA_SET );
-        
+
         unsigned char *ua = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_UA);
 
         write_serial(fd, ua, FRAMA_US_LEN);
 
-	free(ua);
+	      free(ua);
     }
 
     return fd;
@@ -233,6 +229,10 @@ int llopen(int porta, int status) {
 
 int llclose(int fd) {
     printf("Closing...\n");
+
+    flag = 1;
+    counter = 0;
+
     int k;
 
     unsigned char *ua = build_frame_us(BYTE_AR, ll.sequenceNumber, TRAMA_UA);
@@ -294,6 +294,10 @@ int llread(int fd, unsigned char ** buffer) {
           (Reijeitar caso contrário, trama REJ)
       3 - Returnar o que leu, ou negativo se deu erro
     */
+
+    flag = 1;
+    counter = 0;
+
     int n = -1;
     unsigned char* msg =  malloc(MAX_LEN * sizeof(char));
     n = read_serial(fd, msg);
@@ -336,6 +340,10 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             -> Se receber REJ voltar a enviar, com isto tem de se incrementar o counter
         3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
     */
+
+    flag = 1;
+    counter = 0;
+
     unsigned char resp[MAX_LEN];
     int k, tr, n = stuffing(&buffer, length);
     if( n < 0 )
@@ -556,7 +564,7 @@ unsigned char* build_frame_us(char address, int sequence_number, int type) {
             break;
         default:
             return NULL;
-    } 
+    }
 
     frame[3] = frame[1] ^ frame[2];
     frame[4] = BYTE_FLAG;
@@ -566,4 +574,3 @@ unsigned char* build_frame_us(char address, int sequence_number, int type) {
 void free_frame(unsigned char *frame) {
     free(frame);
 }
-
