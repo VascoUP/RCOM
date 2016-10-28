@@ -313,7 +313,7 @@ int llread(int fd, unsigned char ** buffer) {
             //Se sequenceNumber == 1 entao o BIT(6) == 0
             (!(msg[2] & BIT(6)) && ll.sequenceNumber == 1)) {
             //Se nao e duplicado
-            
+
             unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_RR);
             ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
             write_serial(fd, rr, FRAMA_US_LEN);
@@ -559,11 +559,9 @@ unsigned char* build_frame_us(char address, int sequence_number, int type) {
             break;
         case TRAMA_RR:
             frame[2] = BYTE_C_RR | ((sequence_number) ? BIT(7) : 0);
-			      printf("RR: 0x%02x\n", frame[2]);
             break;
         case TRAMA_REJ:
             frame[2] = BYTE_C_REJ | ((sequence_number) ? BIT(7) : 0);
-			      printf("REJ: 0x%02x\n", frame[2]);
             break;
         default:
             return NULL;

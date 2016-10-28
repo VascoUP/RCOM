@@ -173,9 +173,10 @@ int main(int argc, char **argv) {
   if( info.status == TRANSMITTER ) {
      send_file(info.fileDescriptor, file);
   } else {
-    unsigned char* buf = NULL;
+      receive_file(info.fileDescriptor);
+    /*unsigned char* buf = NULL;
     llread( info.fileDescriptor, &buf);
-    llread( info.fileDescriptor, &buf);
+    llread( info.fileDescriptor, &buf);*/
   }
 
   int count = 0;
