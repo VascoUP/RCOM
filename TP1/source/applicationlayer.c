@@ -60,10 +60,8 @@ int build_data_packet( unsigned int control, unsigned int sequenceNumber, unsign
 int send_file(int fd, char *file) {
   int file_size;
   int length;
+
   load_file(file, &file_size);
-
-  printf("%d\n", file_size);
-
   unsigned char *control = build_control_packet(2, file_size, file, &length);
   llwrite( fd, control, length );
 
@@ -130,10 +128,7 @@ int main(int argc, char **argv) {
      send_file(info.fileDescriptor, file);
   } else {
     unsigned char* buf = NULL;
-    int n = llread( info.fileDescriptor, &buf);
-    int i;
-    for( i = 0; i < n; i++ )
-      printf("0x%02x\n", buf[i]);
+    llread( info.fileDescriptor, &buf);
   }
 
   int count = 0;
