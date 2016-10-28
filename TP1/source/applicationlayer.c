@@ -7,14 +7,24 @@ typedef struct {
     int status;         //TRANSMITTER | RECEIVER
 } applicationLayer;
 
-unsigned char* load_file(char *path, int *length) {
+typedef struct {
+    FILE* fileDescriptor;
+    char *file_name;
+    unsigned int size;
+    unsigned int read_size;
+} fileInfo;
+
+unsigned char* load_file(char *path, int *length, fileInfo *info) {
 
     FILE *fp;
     fp = fopen(path, "r");
-
     fseek(fp, 0, SEEK_END);
     *length = ftell(fp);
     rewind(fp);
+
+    info->fileDescriptor = fp;
+    info->size = *length;
+    info->read_size = 0;
 
     unsigned char *data = malloc(sizeof(char) * (*length + 1));
     fread(data, *length, 1, fp);
@@ -61,7 +71,9 @@ int send_file(int fd, char *file) {
   int file_size;
   int length;
 
-  unsigned char *loaded_file = load_file(file, &file_size);
+  fileInfo info;
+
+  unsigned char *loaded_file = load_file(file, &file_size, &info);
 
   unsigned char *control = build_control_packet(2, file_size, file, &length);
   llwrite( fd, control, length );
@@ -76,19 +88,45 @@ int send_file(int fd, char *file) {
   return 0;
 }
 
-int handler_read( /* args */ ) {
+int handler_read( unsigned char* data, int length, fileInfo *info ) {
+
+    if( (unsigned int) data[0] == 2 ) {
+
+      return 1;
+    } else if( (unsigned int) data[0] == 3 ) {
+
+      return 2;
+    } else if( (unsigned int) data[0] == 1 ) {
+
+      return 0;
+    }
+
     /*
-        Handler da trama I recebida ao ler
-            - Tem de detetar duplicados, ou erros
+      Return 0 - Data packet
+      Return 1 - Start packet
+      Return 2 - End packet
     */
-    return 0;
+    return -1;
 }
 
-int receive_file( /* args */ ) {
-    /*
-        Constroi uma imagem com as info das tramas I recebidas
-    */
-    return 0;
+int receive_file( int fd ) {
+    unsigned char *buffer = NULL;
+    int length, type;
+    fileInfo info;
+
+    while( 1 ) {
+        length = llread( fd, &buffer );
+        type = handler_read(buffer, length, &info);
+        if( type == 2 ) {
+            printf("End\n");
+            return 0;
+        } else if( type == 1 ) {
+            printf("Start\n");
+        } else {
+            printf("Normal %d", type);
+        }
+    }
+    return -1;
 }
 
 int main(int argc, char **argv) {
