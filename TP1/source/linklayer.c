@@ -42,6 +42,8 @@ void atende() {
 // !!NOT FINISHED!!
 int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
     int i, type = UNDEFINED;
+    unsigned char dataBcc = 0;
+
     unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
     for( i = 0; i < length; i++ ) {
         //Flag - 1
@@ -99,12 +101,18 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
             else
                 return ERR;
         //Segundo campo de protecao (so valido para tramas I)
-        } else if( bcc1 != 0 && msg[i] == bcc1 && msg[i-1] != bcc1 && type == TRAMA_I ) {
-            bcc2 = msg[i];
-        //Flag - 2 (so valido
-        } else if( bcc2 != 0 && msg[i] == BYTE_FLAG && msg[i-1] == bcc2 && type == TRAMA_I ) {
-            return type;
-        }
+        /*} else if( bcc1 != 0 && msg[i] == bcc1 && msg[i-1] != bcc1 && type == TRAMA_I ) {
+            bcc2 = msg[i];*/
+
+        } else if( /*bcc2 != 0 && */ msg[i] == BYTE_FLAG /*&& msg[i-1] == bcc2*/ && type == TRAMA_I ) {
+	    if( msg[i-1] == dataBcc )
+            	return type;
+        } else {
+	    if( dataBcc == 0 )
+		dataBcc = msg[i];
+            else
+		dataBcc ^= msg[i];
+	}
     }
 
     return -1;
@@ -181,12 +189,6 @@ int llopen(int porta, int status) {
 
     if( ll.status == TRANSMITTER ) {
         unsigned char *set = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_SET);
-        /*unsigned char set[FRAMA_US_LEN];
-        set[0] = BYTE_FLAG;
-        set[1] = BYTE_AT;
-        set[2] = BYTE_C_SET;
-        set[3] = set[1] ^ set[2];
-        set[4] = BYTE_FLAG;*/
 
         while(flag && counter < ll.numTransmissions) {
             if( write_serial(fd, set, FRAMA_US_LEN) == -1 ) return -1;
@@ -216,13 +218,7 @@ int llopen(int porta, int status) {
         } while( handleMessage(k, buffer, A_T) != TRAMA_SET );
         
         unsigned char *ua = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_UA);
-        
-        /*unsigned char ua[FRAMA_US_LEN];
-        ua[0] = BYTE_FLAG;
-        ua[1] = BYTE_AT;
-        ua[2] = BYTE_C_UA;
-        ua[3] = ua[1] ^ ua[2];
-        ua[4] = BYTE_FLAG;*/
+
         write_serial(fd, ua, FRAMA_US_LEN);
     }
 
@@ -232,21 +228,11 @@ int llopen(int porta, int status) {
 int llclose(int fd) {
     printf("Closing...\n");
     int k;
+
+    unsigned char *ua = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_UA);
+    unsigned char *disc = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_DISC);
+
     unsigned char buffer[MAX_LEN];
-    unsigned char disc[FRAMA_US_LEN];
-    unsigned char ua[FRAMA_US_LEN];
-
-    disc[0] = BYTE_FLAG;
-    disc[1] = BYTE_AT;
-    disc[2] = BYTE_C_DISC;
-    disc[3] = disc[1] ^ disc[2];
-    disc[4] = BYTE_FLAG;
-
-    ua[0] = BYTE_FLAG;
-    ua[1] = BYTE_AR;    //Emissor will be sending UA as a response
-    ua[2] = BYTE_C_UA;
-    ua[3] = ua[1] ^ ua[2];
-    ua[4] = BYTE_FLAG;
 
     if( ll.status == TRANSMITTER ) {
 
@@ -366,7 +352,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     int k, tr, n = stuffing(&buffer, length);
     if( n < 0 )
         return n;
-
+/*
     n += 6;
     unsigned char *temp = realloc(buffer, n);
     if (temp == NULL) {
@@ -381,6 +367,8 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     buffer[3] = buffer[1] ^ buffer[2];
     buffer[n-2] = buffer[3];
     buffer[n-1] = BYTE_FLAG;
+*/
+    n = build_frame_i(BYTE_AT, ll.sequenceNumber, &buffer, n);
 
     if( ll.sequenceNumber == 1 ) {
         ll.sequenceNumber = 0;
@@ -396,14 +384,17 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             flag = 0;
             if( ( k = read_serial(fd, resp) ) != -1 )
                 tr = handleMessage(k, resp, A_T);
+	    printf("TR: %d\n", tr);
         } while( flag == 0 && tr != TRAMA_RR && tr != TRAMA_REJ );
 
         if( tr == TRAMA_RR ) {
+	    printf("Trama RR\n");
             flag = 1;
             counter = 0;
 
             break;
         } else if( tr == TRAMA_REJ ) {
+	    printf("Trama REJ\n");
             counter++;
             flag = 1;
         }
@@ -564,6 +555,10 @@ int build_frame_i(char address, int sequence_number, unsigned char **data, unsig
 
     *(*data + frame_length - 2) = bcc2;
     *(*data + frame_length - 1) = BYTE_FLAG;
+
+    int a;
+    for( a = 0; a < frame_length; a++ ) 
+	printf("DATA: 0x%02x\n", (*data)[a]);
 
     return frame_length;
 }
