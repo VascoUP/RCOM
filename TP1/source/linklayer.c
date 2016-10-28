@@ -41,18 +41,22 @@ void atende() {
 
 // !!NOT FINISHED!!
 int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
+	printf("HANDLE MESSAGE: %d\n", length);
     int i, type = UNDEFINED;
     unsigned char dataBcc = 0;
 
     unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
     for( i = 0; i < length; i++ ) {
+		printf("MESSAGE: 0x%02x\n", msg[i]);
         //Flag - 1
         if( f1 == 0 ) {
+			printf("1\n");
             if( msg[i] == BYTE_FLAG ) {
                 f1 = msg[i];
             }
         //Campo de endereco (tem de vir logo a seguir à primeira Flag)
         } else if( a == 0 && i > 0 && msg[i-1] == f1 ) {
+			printf("2\n");
             if( (msg[i] == BYTE_AT && type_a == A_T) || (msg[i] == BYTE_AR && type_a == A_R) ) {
                 a = msg[i];
             }
@@ -60,6 +64,7 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
                 return ERR;
         //Campo de controlo (tem de vir logo a seguir ao campo de endereco)
         } else if( msg[i-1] == a && type == UNDEFINED ) {
+			printf("3\n");
             switch( msg[i] ) {
                 case BYTE_C_I:
                 case BYTE_C_I2:
@@ -87,7 +92,8 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
             }
             c = msg[i];
         //Campo de protecao (tem de vir antes do campo de controlo)
-        } else if( msg[i-1] == c ) {
+        } else if( msg[i-1] == c && bcc1 == 0 ) {
+			printf("4\n");
             if( (a ^ c) == msg[i] ) {
                 bcc1 = msg[i];
             }
@@ -96,6 +102,7 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
         //Flag - 2 (tem de vir antes do campo de protecao
         //              MENOS quando se trata de uma trama I)
         } else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc1 && bcc2 == 0 ) {
+			printf("5\n");
             if( type != TRAMA_I )
                 return type;
             else
@@ -105,14 +112,21 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
             bcc2 = msg[i];*/
 
         } else if( /*bcc2 != 0 && */ msg[i] == BYTE_FLAG /*&& msg[i-1] == bcc2*/ && type == TRAMA_I ) {
-	    if( msg[i-1] == dataBcc )
-            	return type;
-        } else {
-	    if( dataBcc == 0 )
-		dataBcc = msg[i];
-            else
-		dataBcc ^= msg[i];
-	}
+			printf("6\n");
+			printf("BCC2: 0x%02x\n", dataBcc);
+			if( msg[i-1] == dataBcc )
+		    	return type;
+        } else if(bcc1 != 0) {
+			printf("7\n");
+			if( dataBcc == 0 ) {
+				dataBcc = msg[i];
+				printf("dataBcc: 0x%02x\n", dataBcc);
+			}
+			else if( i + 1 != length && msg[i+1] != BYTE_FLAG) {
+				dataBcc ^= msg[i];
+				printf("dataBcc: 0x%02x\n", dataBcc);
+			}
+		}
     }
 
     return -1;
@@ -229,7 +243,7 @@ int llclose(int fd) {
     printf("Closing...\n");
     int k;
 
-    unsigned char *ua = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_UA);
+    unsigned char *ua = build_frame_us(BYTE_AR, ll.sequenceNumber, TRAMA_UA);
     unsigned char *disc = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_DISC);
 
     unsigned char buffer[MAX_LEN];
