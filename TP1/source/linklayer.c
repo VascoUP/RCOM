@@ -212,6 +212,8 @@ int llopen(int porta, int status) {
 
         flag = 1;
         counter = 0;
+
+	free(set);
     } else {
         do {
             k = read_serial(fd, buffer);
@@ -222,6 +224,8 @@ int llopen(int porta, int status) {
         unsigned char *ua = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_UA);
 
         write_serial(fd, ua, FRAMA_US_LEN);
+
+	free(ua);
     }
 
     return fd;
@@ -276,8 +280,10 @@ int llclose(int fd) {
         } while( handleMessage(k, buffer, A_R) != TRAMA_UA );
     }
 
-    return close_serial(fd);
+    free(ua);
+    free(disc);
 
+    return close_serial(fd);
 }
 
 int llread(int fd, unsigned char ** buffer) {

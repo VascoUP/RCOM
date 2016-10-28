@@ -7,34 +7,66 @@ typedef struct {
     int status;         //TRANSMITTER | RECEIVER
 } applicationLayer;
 
-unsigned char* loadImage(char *path) {
-    int length;
+unsigned char* load_file(char *path, int *length) {
     
     FILE *fp;
     fp = fopen(path, "r");
 
     fseek(fp, 0, SEEK_END);
-    length = ftell(fp);
+    *length = ftell(fp);
     rewind(fp);
 
-    unsigned char *data = malloc(sizeof(char) * (length + 1));
-    fread(data, length, 1, fp);
+    unsigned char *data = malloc(sizeof(char) * (*length + 1));
+    fread(data, *length, 1, fp);
 
     return data;
 }
 
-int handler_write( /* args */ ) {
-    /*
-        Meter a informacao da imagem no formato certo
-    */
+unsigned char* build_control_packet( unsigned int control, int *t, int *l, unsigned char **v, int length ) {
+    int nBytes = 1 + 2 * length;
+    int i;
+    for( i = 0; i < length; i++ ) {
+	nBytes += l[i];
+    }
+
+    unsigned char *packet = malloc(nBytes);
+    if( packet == NULL )
+	return NULL;
+
+    packet[0] = control;
+    
+    int j = 1;
+    for( i = 0; i < length; i++ ) {
+	packet[j++] = t[i];
+	packet[j++] = l[i];
+	memcpy(packet+j, v[i], l[i]); 
+	j += l[i];
+    }
+
+    return packet;
+}
+
+int build_data_packet( unsigned int control, unsigned int sequenceNumber, unsigned int nBytes, unsigned char **data ) {
+    unsigned char* tmp = realloc(*data, nBytes + 4 * sizeof(unsigned char));
+    if( tmp == NULL )
+	return -1;
+    *data = tmp;
+    memmove(*data + 4, *data, nBytes);
+
+    (*data)[0] = control;
+    (*data)[1] = sequenceNumber;
+    (*data)[2] = (unsigned char) (nBytes >> 8);
+    (*data)[3] = (unsigned char) nBytes;
+
     return 0;
 }
 
-int send_file() {
-    /*
-        Chama as funcoes llwrite com as tramas I que contém a info da imagem
-    */
+int send_file(char *file) {
 
+    int file_size;
+    load_file(file, &file_size);
+
+    printf("%d\n", file_size);
 
     return 0;
 }
@@ -58,6 +90,7 @@ int main(int argc, char **argv) {
 
     applicationLayer info;
     int port;
+    char file[MAX_LEN];
 
     if( strcmp("receiver", argv[1])==0 ) {
         if( argc != 3 ) {
@@ -66,7 +99,6 @@ int main(int argc, char **argv) {
         }
 
         info.status = RECEIVER;
-
     }
     else if( strcmp("transmitter", argv[1])==0 ) {
         if( argc != 4 ) {
@@ -75,7 +107,7 @@ int main(int argc, char **argv) {
         }
 
         info.status = TRANSMITTER;
-
+    	strcpy(file, argv[3]);
     }
     else
         return -1;
@@ -95,7 +127,11 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    char *msg = (char *) malloc(13 * sizeof(char));
+    if( info.status == TRANSMITTER ) {
+	send_file(file);
+    }
+
+/*    char *msg = (char *) malloc(13 * sizeof(char));
     if( info.status == TRANSMITTER ) {
         strcpy(msg, "TESt4R U2e*'");
         llwrite(info.fileDescriptor, (unsigned char *) msg, 12);
@@ -106,7 +142,7 @@ int main(int argc, char **argv) {
             printf("%c", msg[a]);
         printf("\n");
     }
-
+*/
     int count = 0;
     do {
         if( llclose(info.fileDescriptor) == 0 )
@@ -114,7 +150,7 @@ int main(int argc, char **argv) {
         count++;
     } while( count < 3 );
 
-    free(msg);
+    //free(msg);
 
     if( count == 3 )
         return -1;
