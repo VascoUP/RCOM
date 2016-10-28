@@ -41,22 +41,18 @@ void atende() {
 
 // !!NOT FINISHED!!
 int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
-	printf("HANDLE MESSAGE: %d\n", length);
     int i, type = UNDEFINED;
     unsigned char dataBcc = 0;
 
     unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
     for( i = 0; i < length; i++ ) {
-		printf("MESSAGE: 0x%02x\n", msg[i]);
         //Flag - 1
         if( f1 == 0 ) {
-			printf("1\n");
             if( msg[i] == BYTE_FLAG ) {
                 f1 = msg[i];
             }
         //Campo de endereco (tem de vir logo a seguir à primeira Flag)
         } else if( a == 0 && i > 0 && msg[i-1] == f1 ) {
-			printf("2\n");
             if( (msg[i] == BYTE_AT && type_a == A_T) || (msg[i] == BYTE_AR && type_a == A_R) ) {
                 a = msg[i];
             }
@@ -64,7 +60,6 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
                 return ERR;
         //Campo de controlo (tem de vir logo a seguir ao campo de endereco)
         } else if( msg[i-1] == a && type == UNDEFINED ) {
-			printf("3\n");
             switch( msg[i] ) {
                 case BYTE_C_I:
                 case BYTE_C_I2:
@@ -93,7 +88,6 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
             c = msg[i];
         //Campo de protecao (tem de vir antes do campo de controlo)
         } else if( msg[i-1] == c && bcc1 == 0 ) {
-			printf("4\n");
             if( (a ^ c) == msg[i] ) {
                 bcc1 = msg[i];
             }
@@ -102,7 +96,6 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
         //Flag - 2 (tem de vir antes do campo de protecao
         //              MENOS quando se trata de uma trama I)
         } else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc1 && bcc2 == 0 ) {
-			printf("5\n");
             if( type != TRAMA_I )
                 return type;
             else
@@ -112,19 +105,14 @@ int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
             bcc2 = msg[i];*/
 
         } else if( /*bcc2 != 0 && */ msg[i] == BYTE_FLAG /*&& msg[i-1] == bcc2*/ && type == TRAMA_I ) {
-			printf("6\n");
-			printf("BCC2: 0x%02x\n", dataBcc);
 			if( msg[i-1] == dataBcc )
 		    	return type;
         } else if(bcc1 != 0) {
-			printf("7\n");
 			if( dataBcc == 0 ) {
 				dataBcc = msg[i];
-				printf("dataBcc: 0x%02x\n", dataBcc);
 			}
 			else if( i + 1 != length && msg[i+1] != BYTE_FLAG) {
 				dataBcc ^= msg[i];
-				printf("dataBcc: 0x%02x\n", dataBcc);
 			}
 		}
     }
@@ -311,12 +299,12 @@ int llread(int fd, unsigned char ** buffer) {
             (!(msg[2] & BIT(6)) && ll.sequenceNumber == 1)) {
             //Se nao e duplicado
 
-            unsigned char rr[FRAMA_US_LEN];
-            rr[0] = BYTE_FLAG;
+            unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, BYTE_C_RR);
+            /*rr[0] = BYTE_FLAG;
             rr[1] = BYTE_AT;
             rr[2] = BYTE_C_RR;
             rr[3] = rr[1] ^ rr[2];
-            rr[4] = BYTE_FLAG;
+            rr[4] = BYTE_FLAG;*/
 
             write_serial(fd, rr, FRAMA_US_LEN);
         } else
@@ -324,12 +312,13 @@ int llread(int fd, unsigned char ** buffer) {
             printf("Duplicado\n");
     } else {
 
-        unsigned char rej[FRAMA_US_LEN];
+        unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, BYTE_C_REJ);
+        /*unsigned char rej[FRAMA_US_LEN];
         rej[0] = BYTE_FLAG;
         rej[1] = BYTE_AT;
         rej[2] = BYTE_C_REJ;
         rej[3] = rej[1] ^ rej[2];
-        rej[4] = BYTE_FLAG;
+        rej[4] = BYTE_FLAG;*/
 
         if( ll.sequenceNumber == 1 ) {
             ll.sequenceNumber = 0;
@@ -366,22 +355,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     int k, tr, n = stuffing(&buffer, length);
     if( n < 0 )
         return n;
-/*
-    n += 6;
-    unsigned char *temp = realloc(buffer, n);
-    if (temp == NULL) {
-        return -1;
-    }
-    buffer = temp;
-    memmove(buffer + 4 * sizeof(unsigned char), buffer, n - 6);
 
-    buffer[0] = BYTE_FLAG;
-    buffer[1] = BYTE_AT;
-    buffer[2] = BYTE_C_I;
-    buffer[3] = buffer[1] ^ buffer[2];
-    buffer[n-2] = buffer[3];
-    buffer[n-1] = BYTE_FLAG;
-*/
     n = build_frame_i(BYTE_AT, ll.sequenceNumber, &buffer, n);
 
     if( ll.sequenceNumber == 1 ) {
@@ -398,17 +372,14 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             flag = 0;
             if( ( k = read_serial(fd, resp) ) != -1 )
                 tr = handleMessage(k, resp, A_T);
-	    printf("TR: %d\n", tr);
         } while( flag == 0 && tr != TRAMA_RR && tr != TRAMA_REJ );
 
         if( tr == TRAMA_RR ) {
-	    printf("Trama RR\n");
             flag = 1;
             counter = 0;
 
             break;
         } else if( tr == TRAMA_REJ ) {
-	    printf("Trama REJ\n");
             counter++;
             flag = 1;
         }
@@ -549,18 +520,14 @@ int read_serial(int fd, unsigned char *buf) {
 int build_frame_i(char address, int sequence_number, unsigned char **data, unsigned int length) {
     unsigned int frame_length = length + 6;
     unsigned char bcc2 = *(*data);
-    printf("BCC2: 0x%02x\n", bcc2);
+
     int i;
-    for(i = 1; i < length; i++) {
+    for(i = 1; i < length; i++)
         bcc2 ^= (*data)[i];
-        printf("BCC2: 0x%02x\n", bcc2);
-    }
-    printf("BCC2: 0x%02x\n", bcc2);
 
     unsigned char *tmp = realloc(*data, sizeof(unsigned char) * frame_length);
-    if (tmp == NULL) {
+    if (tmp == NULL)
         return -1;
-    }
 
     *data = tmp;
     memmove(*data + 4, *data, length);
@@ -570,50 +537,16 @@ int build_frame_i(char address, int sequence_number, unsigned char **data, unsig
     *(*data + 2) = BYTE_C_I | ((sequence_number) ? BIT(6) : 0);
     *(*data + 3) = *(*data + 1) ^ *(*data + 2);
 
-  /*  int i;
-    for(i = 1; i < length; i++) {
-        bcc2 ^= (*data)[i];
-        printf("BCC2: 0x%02x\n", bcc2);
-    }*/
-
-
     *(*data + frame_length - 2) = bcc2;
     *(*data + frame_length - 1) = BYTE_FLAG;
 
     return frame_length;
 }
-/*
-unsigned char* build_frame_i(char address, int sequence_number, unsigned char *data, int *length) {
-    int frame_length = *length + 6;
-    unsigned char *frame = malloc(sizeof(char) * frame_length);
-    if (frame == NULL) {
-        return NULL;
-    }
-
-    frame[0] = BYTE_FLAG;
-    frame[1] = address;
-    frame[2] = BYTE_C_I | ((sequence_number) ? BIT(6) : 0);
-    frame[3] = frame[1] ^ frame[2];
-
-    unsigned char bcc2 = data[0];
-    int i;
-    for(i = 1; i < *length; i++) {
-        bcc2 ^= data[i];
-    }
-
-    memmove(&frame[4], data, *length);
-
-    frame[frame_length-2] = bcc2;
-    frame[frame_length-1] = BYTE_FLAG;
-    *length = frame_length;
-    return frame;
-}*/
 
 unsigned char* build_frame_us(char address, int sequence_number, int type) {
     unsigned char *frame = malloc(sizeof(char) * FRAMA_US_LEN);
-    if (frame == NULL) {
+    if (frame == NULL)
         return NULL;
-    }
 
     frame[0] = BYTE_FLAG;
     frame[1] = address;
