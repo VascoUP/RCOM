@@ -266,15 +266,14 @@ int llclose(int fd) {
             if( k == -1 )
                 return -1;
         } while( handleMessage(k, buffer, A_T) != TRAMA_DISC );
-		printf("DISC\n");
+
         write_serial(fd, disc, FRAMA_US_LEN);
-		printf("DISC\n");
+
         do {
             k = read_serial(fd, buffer);
             if( k == -1 )
                 return -1;
         } while( handleMessage(k, buffer, A_R) != TRAMA_UA );
-		printf("UA\n");
     }
 
     return close_serial(fd);
