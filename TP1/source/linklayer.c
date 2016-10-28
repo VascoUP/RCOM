@@ -314,6 +314,7 @@ int llread(int fd, unsigned char ** buffer) {
             (!(msg[2] & BIT(6)) && ll.sequenceNumber == 1)) {
             //Se nao e duplicado
             unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_RR);
+            ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
             write_serial(fd, rr, FRAMA_US_LEN);
         } else
             //Handle duplicado
@@ -356,12 +357,6 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
 
     n = build_frame_i(BYTE_AT, ll.sequenceNumber, &buffer, n);
 
-    if( ll.sequenceNumber == 1 ) {
-        ll.sequenceNumber = 0;
-        buffer[2] |= BIT(7);
-    } else
-        ll.sequenceNumber = 1;
-
     while(flag && counter < ll.numTransmissions) {
         if( write_serial(fd, buffer, n) == -1 ) return -1;
 
@@ -373,6 +368,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
         } while( flag == 0 && tr != TRAMA_RR && tr != TRAMA_REJ );
 
         if( tr == TRAMA_RR ) {
+            ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
             flag = 1;
             counter = 0;
 
