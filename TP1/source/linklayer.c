@@ -35,7 +35,7 @@ static unsigned char* build_frame_us(char address, int sequence_number, int type
 static int build_frame_i(char address, int sequence_number, unsigned char **data, unsigned int length);
 
 void atende() {
-    printf("alarme #%d\n", ++counter);
+    printf("Resending\n");
     flag = 1;
 }
 
@@ -56,8 +56,9 @@ unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
             if( (msg[i] == BYTE_AT && type_a == A_T) || (msg[i] == BYTE_AR && type_a == A_R) ) {
               a = msg[i];
             }
-            else //Se nao for o campo de endereco returnar erro
+            else {//Se nao for o campo de endereco returnar erro
               return ERR;
+            }
         //Campo de controlo (tem de vir logo a seguir ao campo de endereco)
         } else if( msg[i-1] == a && type == UNDEFINED ) {
             switch( msg[i] ) {
@@ -91,18 +92,21 @@ unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
             if( (a ^ c) == msg[i] ) {
                 bcc1 = msg[i];
             }
-            else
+            else {
                 return ERR;
+              }
         //Flag - 2 (tem de vir antes do campo de protecao
         //              MENOS quando se trata de uma trama I)
+        } else if( /*bcc2 != 0 && */ msg[i] == BYTE_FLAG /*&& msg[i-1] == bcc2*/ && type == TRAMA_I ) {
+            if( msg[i-1] == dataBcc ) {
+                return type;
+            }
         } else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc1 && bcc2 == 0 ) {
             if( type != TRAMA_I )
                 return type;
-            else
+            else {
                 return ERR;
-        } else if( /*bcc2 != 0 && */ msg[i] == BYTE_FLAG /*&& msg[i-1] == bcc2*/ && type == TRAMA_I ) {
-            if( msg[i-1] == dataBcc )
-                return type;
+            }
         } else if(bcc1 != 0) {
             if( dataBcc == 0 ) {
                 dataBcc = msg[i];
@@ -112,8 +116,7 @@ unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
             }
         }
     }
-
-    return -1;
+    return ERR;
 }
 
 int destuffing(unsigned char **buffer, unsigned int length) {
@@ -165,7 +168,6 @@ int stuffing(unsigned char **buffer, unsigned int length) {
 }
 
 int llopen(int porta, int status) {
-    printf("Opening...\n");
     int fd;
     if((fd = open_serial(porta, status)) == -1)  {
         printf("Erro open_serial\n");
@@ -229,8 +231,6 @@ int llopen(int porta, int status) {
 }
 
 int llclose(int fd) {
-    printf("Closing...\n");
-
     flag = 1;
     counter = 0;
 
@@ -292,7 +292,6 @@ int llclose(int fd) {
 }
 
 int llread(int fd, unsigned char ** buffer) {
-    printf("Reading...\n");
     /*
       1 - Espera leitura de trama I
       2 - Enviar trama RR se leu mensagem com sucesso
@@ -335,7 +334,6 @@ int llread(int fd, unsigned char ** buffer) {
 }
 
 int llwrite(int fd, unsigned char *buffer, unsigned int length) {
-    printf("Writting...\n");
     /*
         1 - Enviar trama de informacao com <length> bytes mais os bytes de controlo
             -> Poder acontecer não conseguir enviar, das duas uma:

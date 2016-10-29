@@ -60,6 +60,7 @@ int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *i
     int v_index = 3;
     int size, i;
     unsigned char verify = 0;
+    info->size = 0;
 
     while(t_index < length) {
         size = data[l_index];
@@ -73,10 +74,9 @@ int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *i
 
                 break;
             case 1: //file name
-                if( info->file_name == NULL ) {
-                    info->file_name = malloc( size * sizeof(char) );
-                    memset(info->file_name, 0, size);
-                }
+                info->file_name = malloc( (size+1) * sizeof(char) );
+                memset(info->file_name, 0, size+1);
+
                 memcpy(info->file_name, (char *) (data + v_index) , size);
                 printf("unpack_control_packet:: FILE NAME %s size %d\n", info->file_name, size);
 
