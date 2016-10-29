@@ -34,7 +34,6 @@ unsigned char* load_file(char *path, int *length, fileInfo *info) {
     fread(data, *length, 1, fp);
 
     fclose(fp);
-    free(fp);
 
     return data;
 }
@@ -163,14 +162,16 @@ int handler_read( unsigned char* data, int length, fileInfo *info, unsigned int 
         //Se nao tiver recebido todas as informacoes necessarias
         return unpack_control_packet( data, length, info ) == -1 ? -1 : START_PACKET;
     } else if( (unsigned int) data[0] == END_PACKET ) {
-        if( !start )
+        if( !start ) {
+			printf("Havent received start packet\n");
             return -1;
+		}
 
         fileInfo info2;
             //Se nao tiver recebido todas as informacoes necessarias
         return ( unpack_control_packet( data, length, &info2 ) == -1 || 
             //Se alguma das informacoes estiver errada
-            info2.file_name != info->file_name ||                      
+            strcmp(info2.file_name, info->file_name) != 0 ||                      
             info2.size != info->size || 
             //Ainda nao leu o start packet
             info->file_name == NULL ) ?                                 
