@@ -170,7 +170,7 @@ void send_file(int fd, char *file) {
     free(control);
 
   	//Send file -> 124 bytes at a time (128 total)
-  	unsigned int index, data_size, sent;
+  	unsigned int index, data_size, sent, i = 1;
   	int packet_size;
   	unsigned char *packet;
 
@@ -186,6 +186,7 @@ void send_file(int fd, char *file) {
 
   		if( (packet_size = build_data_packet( 1, data_size, &packet)) == -1 ||
             llwrite( fd, packet, packet_size ) == -1 ) {
+        printf("send_file:: Error building or sending the packet\n");
         free(packet);
         break;
       }
@@ -193,7 +194,7 @@ void send_file(int fd, char *file) {
   		info.read_size += data_size;
   		sent = info.read_size * 100;
   		sent /= info.size;
-  		printf("%d - Sent: %d out of %d ( %d%% )\n", index + 1, info.read_size, info.size, sent);
+  		printf("%d - Sent: %d out of %d ( %d%% )\n", i++, info.read_size, info.size, sent);
 
   		free(packet);
     }
