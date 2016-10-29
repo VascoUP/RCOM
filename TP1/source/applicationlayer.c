@@ -114,8 +114,9 @@ unsigned char* build_control_packet( unsigned int control, int file_size, char *
     packet[0] = control;
     packet[1] = 0;
     packet[2] = 2;
-    packet[3] = (unsigned char) file_size >> 8;
-    packet[4] = (unsigned char) file_size;
+    packet[4] = file_size;
+    packet[3] = file_size >> 8;
+    printf("Size: %d - %d\n", file_size >> 8, file_size);
     packet[5] = 1;
     packet[6] = fn_length;
     memcpy(packet + 7, file_name, fn_length);
@@ -149,8 +150,8 @@ int build_data_packet( unsigned int sequenceNumber, unsigned int nBytes, unsigne
 
     (*data)[0] = DATA_PACKET;
     (*data)[1] = sequenceNumber;
-    (*data)[2] = (unsigned char) (nBytes >> 8);
-    (*data)[3] = (unsigned char) nBytes;
+    (*data)[2] = (nBytes >> 8);
+    (*data)[3] = nBytes;
 
     return nBytes + 4;
 }
@@ -193,13 +194,13 @@ void send_file(int fd, char *file) {
   		info.read_size += data_size;
   		sent = info.read_size * 100;
   		sent /= info.size;
-  		printf("Sent: %d out of %d ( %d )\n", info.read_size, info.size, sent);
+  		printf("%d - Sent: %d out of %d ( %d )\n", index + 1, info.read_size, info.size, sent);
 
   		free(packet);
     }
 
     control = build_control_packet(END_PACKET, file_size, file, &length);
-	printf("send_file:: Send end packet (control %d)\n", (int) control[0]);
+	  printf("send_file:: Send end packet (control %d)\n", (int) control[0]);
     llwrite( fd, control, length );
     free(control);
 
@@ -254,13 +255,14 @@ int receive_file( int fd ) {
     fileInfo info;
     info.file_name = NULL;
     info.read_size = 0;
+    int i = 1;
 
     while( 1 ) { //Keeps reading until it receives an end packet
 
         length = llread( fd, &buffer );
         type = handler_read(buffer, length, &info, start);
         if( type == DATA_PACKET ) {
-            printf("receive_file:: Received %d out of %d ( %d%% )\n", info.read_size, info.size, info.read_size * 100 / info.size );
+            printf("receive_file:: %d - Received %d out of %d ( %d%% )\n", i++, info.read_size, info.size, info.read_size * 100 / info.size );
         } else if( type == START_PACKET ) {
             start = 1;
             printf("receive_file:: Start\n");
