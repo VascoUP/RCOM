@@ -22,7 +22,11 @@ typedef struct {
 unsigned char* load_file(char *path, int *length, fileInfo *info) {
 
     FILE *fp;
-    fp = fopen(path, "r");
+    if( (fp = fopen(path, "r")) == NULL ) {
+      printf("load_file:: Couldnt open %s\n", path);
+      return NULL;
+    }
+
     fseek(fp, 0, SEEK_END);
     *length = ftell(fp);
     rewind(fp);
@@ -159,6 +163,7 @@ void send_file(int fd, char *file) {
 	  //info.sequence_number = 1;
 
     unsigned char *loaded_file = load_file(file, &file_size, &info);
+    if( loaded_file == NULL ) return ;
 
     unsigned char *control = build_control_packet(START_PACKET, file_size, file, &length);
     llwrite( fd, control, length );

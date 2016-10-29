@@ -28,7 +28,7 @@ static int stuffing(unsigned char **buffer, unsigned int length);
 
 static int open_serial(int porta, int status);
 static int close_serial(int fd);
-static int write_serial(int fd, unsigned char msg[], unsigned int length);
+static int write_serial(int fd, unsigned char *msg, unsigned int length);
 static int read_serial(int fd, unsigned char *buf);
 
 static unsigned char* build_frame_us(char address, int sequence_number, int type);
@@ -217,8 +217,10 @@ int llopen(int porta, int status) {
     } else {
         do {
             k = read_serial(fd, buffer);
-            if( k == -1 )
+            if( k == -1 ) {
+                printf("llopen:: Error reading from the serial port\n");
                 return -1;
+            }
         } while( handleMessage(k, buffer, A_T) != TRAMA_SET );
 
         unsigned char *ua = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_UA);
@@ -442,7 +444,7 @@ int close_serial(int fd) {
     return 0;
 }
 
-int write_serial(int fd, unsigned char msg[], unsigned int length) {
+int write_serial(int fd, unsigned char *msg, unsigned int length) {
     int nw = 0;
     nw = write(fd, msg, length);
     while (length > nw) {
@@ -460,12 +462,16 @@ int write_serial(int fd, unsigned char msg[], unsigned int length) {
 }
 
 int read_serial(int fd, unsigned char *buf) {
+    if( buf == NULL )
+      return -1;
+      
+    unsigned int max_len = MAX_LEN;
     int hasFirst = 0, nfr = 0;
     int iter = 0;
     int k;
     while(1) {
         int n = 0;
-        n = read(fd, buf + nfr, MAX_LEN - nfr);
+        n = read(fd, buf + nfr, max_len - nfr);
 
         if( n <= 0 )
             return -1;
@@ -504,7 +510,7 @@ int read_serial(int fd, unsigned char *buf) {
             }
         }
 
-        if( nfr == MAX_LEN )
+        if( nfr == max_len )
             nfr = 0;
 
         iter++;
