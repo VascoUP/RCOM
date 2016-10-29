@@ -16,7 +16,6 @@ typedef struct {
     char *file_name;
     unsigned int size;
     unsigned int read_size;
-	//int sequence_number;
 } fileInfo;
 
 //Only used by the transmitter
@@ -45,9 +44,9 @@ int open_file( char* path ) {
     return fd;
 }
 
-void write_file( int fd, unsigned char* data, int length ) {
+int write_file( int fd, unsigned char* data, int length ) {
     int n = write(fd, data, length);
-    printf("N: %d\n", n);
+    return n;
 }
 
 void close_file( int fd ) {
@@ -68,17 +67,15 @@ int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *i
             case 0: //file size
                 for( i = 0; i < size; i++ )
                     info->size = (info->size << 8) + (int) data[v_index + i];
-                printf("unpack_control_packet:: SIZE %d\n", info->size);
 
                 verify |= BIT(0);
 
                 break;
             case 1: //file name
                 info->file_name = malloc( (size+1) * sizeof(char) );
-                memset(info->file_name, 0, size+1);
 
+                memset(info->file_name, 0, size+1);
                 memcpy(info->file_name, (char *) (data + v_index) , size);
-                printf("unpack_control_packet:: FILE NAME %s size %d\n", info->file_name, size);
 
                 verify |= BIT(1);
 
@@ -102,21 +99,19 @@ int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *i
 
 unsigned char* build_control_packet( unsigned int control, int file_size, char *file_name, int *length ) {
     const int fn_length = strlen(file_name);
-	printf("FILE NAME: %s SIZE: %d\n", file_name, fn_length);
     *length = 7 + fn_length;
 
-    unsigned char *packet = malloc(*length);
+    unsigned char *packet = malloc(*length * sizeof(unsigned char));
     if( packet == NULL ) {
-		printf("build_control_packet:: Error reallocing memory\n");
+		    printf("build_control_packet:: Error allocing memory\n");
         return NULL;
-	}
+	  }
 
     packet[0] = control;
     packet[1] = 0;
     packet[2] = 2;
     packet[4] = file_size;
     packet[3] = file_size >> 8;
-    printf("Size: %d - %d\n", file_size >> 8, file_size);
     packet[5] = 1;
     packet[6] = fn_length;
     memcpy(packet + 7, file_name, fn_length);
@@ -166,7 +161,6 @@ void send_file(int fd, char *file) {
     unsigned char *loaded_file = load_file(file, &file_size, &info);
 
     unsigned char *control = build_control_packet(START_PACKET, file_size, file, &length);
-  	printf("send_file:: Send start packet (control %d)\n", (int) control[0]);
     llwrite( fd, control, length );
     free(control);
 
@@ -194,13 +188,12 @@ void send_file(int fd, char *file) {
   		info.read_size += data_size;
   		sent = info.read_size * 100;
   		sent /= info.size;
-  		printf("%d - Sent: %d out of %d ( %d )\n", index + 1, info.read_size, info.size, sent);
+  		printf("%d - Sent: %d out of %d ( %d%% )\n", index + 1, info.read_size, info.size, sent);
 
   		free(packet);
     }
 
     control = build_control_packet(END_PACKET, file_size, file, &length);
-	  printf("send_file:: Send end packet (control %d)\n", (int) control[0]);
     llwrite( fd, control, length );
     free(control);
 
@@ -259,16 +252,15 @@ int receive_file( int fd ) {
 
     while( 1 ) { //Keeps reading until it receives an end packet
 
-        length = llread( fd, &buffer );
+        if( (length = llread( fd, &buffer )) == -1 )
+          continue;
         type = handler_read(buffer, length, &info, start);
         if( type == DATA_PACKET ) {
-            printf("receive_file:: %d - Received %d out of %d ( %d%% )\n", i++, info.read_size, info.size, info.read_size * 100 / info.size );
+            printf("%d - Received %d out of %d ( %d%% )\n", i++, info.read_size, info.size, info.read_size * 100 / info.size );
         } else if( type == START_PACKET ) {
             start = 1;
-            printf("receive_file:: Start\n");
             info.fd = open_file( info.file_name );
         } else if( type == END_PACKET ) {
-            printf("receive_file:: End\n");
             close_file( info.fd );
             break;
         } else

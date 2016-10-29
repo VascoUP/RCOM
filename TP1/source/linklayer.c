@@ -36,6 +36,7 @@ static int build_frame_i(char address, int sequence_number, unsigned char **data
 
 void atende() {
     printf("Resending\n");
+    counter++;
     flag = 1;
 }
 
@@ -304,7 +305,8 @@ int llread(int fd, unsigned char ** buffer) {
 
     int n = -1;
     unsigned char* msg =  malloc(MAX_LEN * sizeof(char));
-    n = read_serial(fd, msg);
+    if( (n = read_serial(fd, msg)) == -1)
+      return -1;    
 
     if ( handleMessage(n, msg, A_T) == TRAMA_I ) {
         if( //Se sequenceNumber == 0 entao o BIT(6) == 1
