@@ -306,7 +306,7 @@ int llread(int fd, unsigned char ** buffer) {
     int n = -1;
     unsigned char* msg =  malloc(MAX_LEN * sizeof(char));
     if( (n = read_serial(fd, msg)) == -1)
-      return -1;    
+      return -1;
 
     if ( handleMessage(n, msg, A_T) == TRAMA_I ) {
         if( //Se sequenceNumber == 0 entao o BIT(6) == 1

@@ -179,12 +179,12 @@ void send_file(int fd, char *file) {
   		//Copy part of the file to the newly initialized packets
   		memcpy(packet, loaded_file + index, data_size);
 
-  		if( (packet_size = build_data_packet( 1, data_size, &packet)) == -1 ) {
-  			free(packet);
-  			break;
-  		}
+  		if( (packet_size = build_data_packet( 1, data_size, &packet)) == -1 ||
+            llwrite( fd, packet, packet_size ) == -1 ) {
+        free(packet);
+        break;
+      }
 
-  		llwrite( fd, packet, packet_size );
   		info.read_size += data_size;
   		sent = info.read_size * 100;
   		sent /= info.size;
@@ -192,6 +192,9 @@ void send_file(int fd, char *file) {
 
   		free(packet);
     }
+
+    if( index < file_size )
+      printf("Trying to send end packet\n");
 
     control = build_control_packet(END_PACKET, file_size, file, &length);
     llwrite( fd, control, length );
