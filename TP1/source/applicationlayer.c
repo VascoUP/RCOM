@@ -41,12 +41,13 @@ unsigned char* load_file(char *path, int *length, fileInfo *info) {
 
 int open_file( char* path ) {
     remove(path);
-    int fd = open(path, O_CREAT | O_EXCL | O_APPEND);
+    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_APPEND);
     return fd;
 }
 
 void write_file( int fd, unsigned char* data, int length ) {
-    write(fd, data, length);
+    int n = write(fd, data, length);
+    printf("N: %d\n", n);
 }
 
 void close_file( int fd ) {
@@ -66,14 +67,18 @@ int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *i
             case 0: //file size
                 for( i = 0; i < size; i++ )
                     info->size = (info->size << 8) + (int) data[v_index + i];
+                printf("unpack_control_packet:: SIZE %d\n", info->size);
 
                 verify |= BIT(0);
 
                 break;
             case 1: //file name
-                if( info->file_name == NULL )
+                if( info->file_name == NULL ) {
                     info->file_name = malloc( size * sizeof(char) );
-                memcpy(info->file_name, (char *) (data + v_index) , size);  
+                    memset(info->file_name, 0, size);
+                }
+                memcpy(info->file_name, (char *) (data + v_index) , size);
+                printf("unpack_control_packet:: FILE NAME %s size %d\n", info->file_name, size);
 
                 verify |= BIT(1);
 
@@ -136,9 +141,9 @@ int unpack_data_packet( unsigned char** data ) {
 int build_data_packet( unsigned int sequenceNumber, unsigned int nBytes, unsigned char **data ) {
     unsigned char* tmp = realloc(*data, nBytes + 4 * sizeof(unsigned char));
     if( tmp == NULL ) {
-		printf("build_data_packet:: Error reallocing memory\n");
+        printf("build_data_packet:: Error reallocing memory\n");
         return -1;
-	}
+    }
     *data = tmp;
     memmove(*data + 4, *data, nBytes);
 
@@ -155,43 +160,43 @@ void send_file(int fd, char *file) {
     int length;
 
     fileInfo info;
-	//info.sequence_number = 1;
+	  //info.sequence_number = 1;
 
     unsigned char *loaded_file = load_file(file, &file_size, &info);
 
     unsigned char *control = build_control_packet(START_PACKET, file_size, file, &length);
-	printf("send_file:: Send start packet (control %d)\n", (int) control[0]);
+  	printf("send_file:: Send start packet (control %d)\n", (int) control[0]);
     llwrite( fd, control, length );
     free(control);
 
-	//Send file -> 124 bytes at a time (128 total)
-	unsigned int index, data_size, sent;
-	int packet_size;
-	unsigned char *packet;
+  	//Send file -> 124 bytes at a time (128 total)
+  	unsigned int index, data_size, sent;
+  	int packet_size;
+  	unsigned char *packet;
 
-	for( index = 0; index < file_size; index += 124 ) {
+    for( index = 0; index < file_size; index += 124 ) {
 
-		//Last packet might have to be shorter than the others
-		data_size = (file_size - index < 124) ? file_size - index : 124;
+  		//Last packet might have to be shorter than the others
+  		data_size = (file_size - index < 124) ? file_size - index : 124;
 
-		packet = malloc(data_size * sizeof(unsigned char));
-		
-		//Copy part of the file to the newly initialized packets
-		memcpy(packet, loaded_file + index, data_size);
+  		packet = malloc(data_size * sizeof(unsigned char));
 
-		if( (packet_size = build_data_packet( 1, data_size, &packet)) == -1 ) {
-			free(packet);
-			break;
-		}
+  		//Copy part of the file to the newly initialized packets
+  		memcpy(packet, loaded_file + index, data_size);
 
-		llwrite( fd, packet, packet_size );
-		info.read_size += data_size;
-		sent = info.read_size * 100;
-		sent /= info.size;
-		printf("Sent: %d out of %d ( %d )\n", info.read_size, info.size, sent);
+  		if( (packet_size = build_data_packet( 1, data_size, &packet)) == -1 ) {
+  			free(packet);
+  			break;
+  		}
 
-		free(packet);
-	}
+  		llwrite( fd, packet, packet_size );
+  		info.read_size += data_size;
+  		sent = info.read_size * 100;
+  		sent /= info.size;
+  		printf("Sent: %d out of %d ( %d )\n", info.read_size, info.size, sent);
+
+  		free(packet);
+    }
 
     control = build_control_packet(END_PACKET, file_size, file, &length);
 	printf("send_file:: Send end packet (control %d)\n", (int) control[0]);
@@ -205,13 +210,14 @@ int handler_read( unsigned char* data, int length, fileInfo *info, unsigned int 
 
     if( (unsigned int) data[0] == DATA_PACKET ) {
         if( !start ) {
-			printf("handler_read:: Havent received start packet\n");
+			      printf("handler_read:: Havent received start packet\n");
             return -1;
-		}
+		    }
 
 		int length = unpack_data_packet(&data);
+    info->read_size += length;
 		write_file(info->fd, data, length);
-		
+
         return DATA_PACKET;       //Informa funcao receive_file que recebeu uma data packet
     } else if( (unsigned int) data[0] == START_PACKET ) {
         if( start ) {
@@ -228,12 +234,12 @@ int handler_read( unsigned char* data, int length, fileInfo *info, unsigned int 
 
         fileInfo info2;
             //Se nao tiver recebido todas as informacoes necessarias
-        return ( unpack_control_packet( data, length, &info2 ) == -1 || 
+        return ( unpack_control_packet( data, length, &info2 ) == -1 ||
             //Se alguma das informacoes estiver errada
-            strcmp(info2.file_name, info->file_name) != 0 ||                      
-            info2.size != info->size || 
+            strcmp(info2.file_name, info->file_name) != 0 ||
+            info2.size != info->size ||
             //Ainda nao leu o start packet
-            info->file_name == NULL ) ?                                 
+            info->file_name == NULL ) ?
             -1 : END_PACKET;
     }
 
@@ -247,13 +253,14 @@ int receive_file( int fd ) {
     int length, type;
     fileInfo info;
     info.file_name = NULL;
+    info.read_size = 0;
 
     while( 1 ) { //Keeps reading until it receives an end packet
 
         length = llread( fd, &buffer );
         type = handler_read(buffer, length, &info, start);
         if( type == DATA_PACKET ) {
-            printf("receive_file:: Normal\n");
+            printf("receive_file:: Received %d out of %d ( %d%% )\n", info.read_size, info.size, info.read_size * 100 / info.size );
         } else if( type == START_PACKET ) {
             start = 1;
             printf("receive_file:: Start\n");
@@ -262,7 +269,7 @@ int receive_file( int fd ) {
             printf("receive_file:: End\n");
             close_file( info.fd );
             break;
-        } else 
+        } else
             printf("receive_file:: Error\n");
 
     }
@@ -328,6 +335,6 @@ int main(int argc, char **argv) {
     } while( count < 3 );
 
     if( count == 3 )
-        return -1;  
+        return -1;
     return 0;
 }
