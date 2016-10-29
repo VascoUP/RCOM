@@ -16,6 +16,7 @@ typedef struct {
     char *file_name;
     unsigned int size;
     unsigned int read_size;
+	//int sequence_number;
 } fileInfo;
 
 //Only used by the transmitter
@@ -40,7 +41,7 @@ unsigned char* load_file(char *path, int *length, fileInfo *info) {
 
 int open_file( char* path ) {
     remove(path);
-    int fd = open(path, O_CREAT | O_EXCL);
+    int fd = open(path, O_CREAT | O_EXCL | O_APPEND);
     return fd;
 }
 
@@ -90,17 +91,20 @@ int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *i
     if( verify == 0x3 )
         return 0;
 
-    printf("Unpacking was unsuccessfull\n");
+    printf("unpack_control_packet:: Unpacking was unsuccessfull\n");
     return -1;
 }
 
 unsigned char* build_control_packet( unsigned int control, int file_size, char *file_name, int *length ) {
     const int fn_length = strlen(file_name);
+	printf("FILE NAME: %s SIZE: %d\n", file_name, fn_length);
     *length = 7 + fn_length;
 
     unsigned char *packet = malloc(*length);
-    if( packet == NULL )
+    if( packet == NULL ) {
+		printf("build_control_packet:: Error reallocing memory\n");
         return NULL;
+	}
 
     packet[0] = control;
     packet[1] = 0;
@@ -114,10 +118,27 @@ unsigned char* build_control_packet( unsigned int control, int file_size, char *
     return packet;
 }
 
+int unpack_data_packet( unsigned char** data ) {
+	int length = (int) ((*data)[2] << 8 | (*data)[3]);
+	//int sequence_number = (int) (*data)[1];
+
+	memmove(*data, *data + 4, length);
+	unsigned char* tmp = realloc(*data, length * sizeof(unsigned char));
+	if( tmp == NULL ) {
+		printf("unpack_data_packet:: Error reallocing memory\n");
+		return -1;
+	}
+	*data = tmp;
+
+	return length;
+}
+
 int build_data_packet( unsigned int sequenceNumber, unsigned int nBytes, unsigned char **data ) {
     unsigned char* tmp = realloc(*data, nBytes + 4 * sizeof(unsigned char));
-    if( tmp == NULL )
+    if( tmp == NULL ) {
+		printf("build_data_packet:: Error reallocing memory\n");
         return -1;
+	}
     *data = tmp;
     memmove(*data + 4, *data, nBytes);
 
@@ -126,44 +147,82 @@ int build_data_packet( unsigned int sequenceNumber, unsigned int nBytes, unsigne
     (*data)[2] = (unsigned char) (nBytes >> 8);
     (*data)[3] = (unsigned char) nBytes;
 
-    return 0;
+    return nBytes + 4;
 }
 
-int send_file(int fd, char *file) {
+void send_file(int fd, char *file) {
     int file_size;
     int length;
 
     fileInfo info;
+	//info.sequence_number = 1;
 
     unsigned char *loaded_file = load_file(file, &file_size, &info);
 
     unsigned char *control = build_control_packet(START_PACKET, file_size, file, &length);
+	printf("send_file:: Send start packet (control %d)\n", (int) control[0]);
     llwrite( fd, control, length );
     free(control);
 
+	//Send file -> 124 bytes at a time (128 total)
+	unsigned int index, data_size, sent;
+	int packet_size;
+	unsigned char *packet;
+
+	for( index = 0; index < file_size; index += 124 ) {
+
+		//Last packet might have to be shorter than the others
+		data_size = (file_size - index < 124) ? file_size - index : 124;
+
+		packet = malloc(data_size * sizeof(unsigned char));
+		
+		//Copy part of the file to the newly initialized packets
+		memcpy(packet, loaded_file + index, data_size);
+
+		if( (packet_size = build_data_packet( 1, data_size, &packet)) == -1 ) {
+			free(packet);
+			break;
+		}
+
+		llwrite( fd, packet, packet_size );
+		info.read_size += data_size;
+		sent = info.read_size * 100;
+		sent /= info.size;
+		printf("Sent: %d out of %d ( %d )\n", info.read_size, info.size, sent);
+
+		free(packet);
+	}
+
     control = build_control_packet(END_PACKET, file_size, file, &length);
+	printf("send_file:: Send end packet (control %d)\n", (int) control[0]);
     llwrite( fd, control, length );
     free(control);
 
     free(loaded_file);
-
-    return 0;
 }
 
 int handler_read( unsigned char* data, int length, fileInfo *info, unsigned int start ) {
 
     if( (unsigned int) data[0] == DATA_PACKET ) {
-        if( start )
+        if( !start ) {
+			printf("handler_read:: Havent received start packet\n");
             return -1;
+		}
+
+		int length = unpack_data_packet(&data);
+		write_file(info->fd, data, length);
+		
         return DATA_PACKET;       //Informa funcao receive_file que recebeu uma data packet
     } else if( (unsigned int) data[0] == START_PACKET ) {
-        if( start ) 
+        if( start ) {
+			printf("handler_read:: Already received start packet\n");
             return -1;
+		}
         //Se nao tiver recebido todas as informacoes necessarias
         return unpack_control_packet( data, length, info ) == -1 ? -1 : START_PACKET;
     } else if( (unsigned int) data[0] == END_PACKET ) {
         if( !start ) {
-			printf("Havent received start packet\n");
+			printf("handler_read:: Havent received start packet\n");
             return -1;
 		}
 
@@ -178,6 +237,7 @@ int handler_read( unsigned char* data, int length, fileInfo *info, unsigned int 
             -1 : END_PACKET;
     }
 
+	printf("handler_read:: Didnt receive any of the possible types of packets\n");
     return -1;
 }
 
@@ -193,24 +253,24 @@ int receive_file( int fd ) {
         length = llread( fd, &buffer );
         type = handler_read(buffer, length, &info, start);
         if( type == DATA_PACKET ) {
-            printf("Normal");
+            printf("receive_file:: Normal\n");
         } else if( type == START_PACKET ) {
             start = 1;
-            printf("Start\n");
+            printf("receive_file:: Start\n");
             info.fd = open_file( info.file_name );
         } else if( type == END_PACKET ) {
-            printf("End\n");
+            printf("receive_file:: End\n");
             close_file( info.fd );
-            return 0;
+            break;
         } else 
-            printf("Error\n");
+            printf("receive_file:: Error\n");
 
     }
 
     if(info.file_name != NULL)
         free(info.file_name);
 
-    return -1;
+    return 0;
 }
 
 int main(int argc, char **argv) {
@@ -221,7 +281,7 @@ int main(int argc, char **argv) {
 
     if( strcmp("receiver", argv[1])==0 ) {
         if( argc != 3 ) {
-            printf("1 - Falta argumentos\n");
+            printf("main:: Falta argumentos\n");
             return -1;
         }
 
@@ -229,7 +289,7 @@ int main(int argc, char **argv) {
     }
     else if( strcmp("transmitter", argv[1])==0 ) {
         if( argc != 4 ) {
-            printf("2 - Falta argumentos\n");
+            printf("main:: Falta argumentos\n");
             return -1;
         }
 
@@ -244,13 +304,13 @@ int main(int argc, char **argv) {
     else if( strcmp("/dev/ttyS1", argv[2])==0 )
         port = 1;
     else {
-        printf("Porta nao existente\n");
+        printf("main:: Porta nao existente\n");
         return -1;
     }
 
     al.fileDescriptor = llopen( port, al.status );
     if( al.fileDescriptor < 0 ) {
-        printf("Erro ao abrir a porta de série\n");
+        printf("main:: Erro ao abrir a porta de série\n");
         return -1;
     }
 
