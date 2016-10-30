@@ -43,7 +43,7 @@ unsigned char* load_file(char *path, int *length, fileInfo *info) {
 }
 
 int open_file( char* path ) {
-    int status = remove(file_name);
+    int status = remove(path);
     if( status != 0 )
         printf("Error removing the file %s\n", path);
 
@@ -266,7 +266,7 @@ int receive_file( int fd ) {
             printf("%d - Received %d out of %d ( %d%% )\n", i++, info.read_size, info.size, info.read_size * 100 / info.size );
         } else if( type == START_PACKET ) {
             start = 1;
-            if( info.fd = open_file( info.file_name ) == -1 ) {
+            if( (info.fd = open_file( info.file_name )) == -1 ) {
                 printf("receive_file:: Unable to open the file %s\n", info.file_name);
                 break;
             }
