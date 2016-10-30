@@ -163,45 +163,44 @@ void send_file(int fd, char *file) {
 	  //info.sequence_number = 1;
 
     unsigned char *loaded_file = load_file(file, &file_size, &info);
-    if( loaded_file == NULL ) return ;
 
     unsigned char *control = build_control_packet(START_PACKET, file_size, file, &length);
     llwrite( fd, control, length );
     free(control);
 
-  	//Send file -> 124 bytes at a time (128 total)
-  	unsigned int index, data_size, sent, i = 1;
-  	int packet_size;
-  	unsigned char *packet;
+    //Send file -> 124 bytes at a time (128 total)
+    unsigned int index, data_size, sent, i = 1;
+    int packet_size;
+    unsigned char *packet;
 
     for( index = 0; index < file_size; index += 124 ) {
 
-  		//Last packet might have to be shorter than the others
-  		data_size = (file_size - index < 124) ? file_size - index : 124;
+        //Last packet might have to be shorter than the others
+        data_size = (file_size - index < 124) ? file_size - index : 124;
 
-  		packet = malloc(data_size * sizeof(unsigned char));
+        packet = malloc(data_size * sizeof(unsigned char));
 
-  		//Copy part of the file to the newly initialized packets
-  		memcpy(packet, loaded_file + index, data_size);
+        //Copy part of the file to the newly initialized packets
+        memcpy(packet, loaded_file + index, data_size);
 
-  		if( (packet_size = build_data_packet( 1, data_size, &packet)) == -1 ||
+        if( (packet_size = build_data_packet( 1, data_size, &packet)) == -1 ||
             llwrite( fd, packet, packet_size ) == -1 ) {
         printf("send_file:: Error building or sending the packet\n");
         free(packet);
         break;
-      }
+    }
 
-  		info.read_size += data_size;
-  		sent = info.read_size * 100;
-  		sent /= info.size;
-  		printf("%d - Sent: %d out of %d ( %d%% )\n", i++, info.read_size, info.size, sent);
+        info.read_size += data_size;
+        sent = info.read_size * 100;
+        sent /= info.size;
+        printf("%d - Sent: %d out of %d ( %d%% )\n", i++, info.read_size, info.size, sent);
 
-  		free(packet);
+        free(packet);
     }
 
     if( index < file_size )
-      printf("Trying to send end packet\n");
-
+        printf("Trying to send end packet\n");
+    
     control = build_control_packet(END_PACKET, file_size, file, &length);
     llwrite( fd, control, length );
     free(control);
@@ -213,12 +212,12 @@ int handler_read( unsigned char* data, int length, fileInfo *info, unsigned int 
 
     if( (unsigned int) data[0] == DATA_PACKET ) {
         if( !start ) {
-			      printf("handler_read:: Havent received start packet\n");
+		    printf("handler_read:: Havent received start packet\n");
             return -1;
-		    }
+		}
 
 		int length = unpack_data_packet(&data);
-    info->read_size += length;
+        info->read_size += length;
 		write_file(info->fd, data, length);
 
         return DATA_PACKET;       //Informa funcao receive_file que recebeu uma data packet
@@ -230,10 +229,6 @@ int handler_read( unsigned char* data, int length, fileInfo *info, unsigned int 
         //Se nao tiver recebido todas as informacoes necessarias
         return unpack_control_packet( data, length, info ) == -1 ? -1 : START_PACKET;
     } else if( (unsigned int) data[0] == END_PACKET ) {
-        if( !start ) {
-			printf("handler_read:: Havent received start packet\n");
-            return -1;
-		}
 
         fileInfo info2;
             //Se nao tiver recebido todas as informacoes necessarias
@@ -304,7 +299,15 @@ int main(int argc, char **argv) {
         }
 
         al.status = TRANSMITTER;
-    strcpy(file, argv[3]);
+        strcpy(file, argv[3]);
+
+        FILE *fp;
+        if( (fp = fopen(file, "r")) == NULL ) {
+            printf("load_file:: Couldnt open %s\n", file);
+            return -1;
+        }
+
+        fclose(fp);
     }
     else
         return -1;

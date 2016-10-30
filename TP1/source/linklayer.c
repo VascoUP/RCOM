@@ -311,21 +311,21 @@ int llread(int fd, unsigned char ** buffer) {
       return -1;
 
     if ( handleMessage(n, msg, A_T) == TRAMA_I ) {
-        if( //Se sequenceNumber == 0 entao o BIT(6) == 1
-            (msg[2] & BIT(6) && ll.sequenceNumber == 0) ||
-            //Se sequenceNumber == 1 entao o BIT(6) == 0
-            (!(msg[2] & BIT(6)) && ll.sequenceNumber == 1)) {
-            //Se nao e duplicado
-
             unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_RR);
             ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
             write_serial(fd, rr, FRAMA_US_LEN);
-        } else
-            //Handle duplicado
-            printf("Duplicado\n");
+            
+            if( //Se sequenceNumber == 0 entao o BIT(6) == 1
+                (!(msg[2] & BIT(6)) && ll.sequenceNumber == 0) ||
+                //Se sequenceNumber == 1 entao o BIT(6) == 0
+                (msg[2] & BIT(6) && ll.sequenceNumber == 1)) {
+                //Duplicado
+                printf("Duplicado\n");
+            }
     } else {
         unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
         write_serial(fd, rej, FRAMA_US_LEN);
+        return -1;
     }
 
     n -= 6;
