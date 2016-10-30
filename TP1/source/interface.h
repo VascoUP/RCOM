@@ -1,3 +1,6 @@
+#ifndef INTERFACE_H
+#define INTERFACE_H
+
 #include <string.h>
 #include <stdio.h>
 #include <termios.h>
@@ -36,4 +39,6 @@ void getInformation();
 receiverInfo getReceiverInfo();
 
 transmitterInfo getTransmitterInfo();
+
+#endif
 
