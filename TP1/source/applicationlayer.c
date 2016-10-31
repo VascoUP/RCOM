@@ -57,8 +57,9 @@ int write_file( int fd, unsigned char* data, int length ) {
 	return n;
 }
 
-void close_file( int fd ) {
+void close_file( int fd, char* path ) {
     	close(fd);
+	chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 }
 
 int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *info ) {
@@ -292,7 +293,7 @@ int receive_file( applicationLayer app ) {
 			}
 		} else if( type == END_PACKET ) {
 			printf("receive_file:: End packet\n");
-			close_file( info.fd );
+			close_file( info.fd, info.file_name );
 			break;
 		} else
 		printf("receive_file:: Error\n");
