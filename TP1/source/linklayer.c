@@ -136,6 +136,7 @@ int destuffing(unsigned char **buffer, unsigned int length) {
 		printf("destuffing:: New array length is invalid\n");
 		return -1;
 	}
+	printf("destuffing:: realloc\n");
     unsigned char *temp = realloc(*buffer, newlength * sizeof(unsigned char));
     if (temp == NULL) {
         return -1;
@@ -154,6 +155,7 @@ int stuffing(unsigned char **buffer, unsigned int length) {
     }
 
     int newlength = length + count;
+	printf("stuffing:: realloc\n");
     unsigned char *temp = realloc(*buffer, newlength * sizeof(unsigned char));
     if (temp == NULL) {
         return -1;
@@ -285,7 +287,7 @@ int llclose(int fd) {
 
         write_serial(fd, disc, FRAMA_US_LEN);
 
-        do {
+        do {	
             k = read_serial(fd, buffer);
             if( k == -1 )
                 return -1;
@@ -315,23 +317,19 @@ int llread(int fd, unsigned char ** buffer) {
       return -1;
 
     if ( handleMessage(n, msg, A_T) == TRAMA_I ) {
-            unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_RR);
-            ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
-            write_serial(fd, rr, FRAMA_US_LEN);
+        unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_RR);
+        write_serial(fd, rr, FRAMA_US_LEN);
 
-            if( //Se sequenceNumber == 0 entao o BIT(6) == 1
-                (!(msg[2] & BIT(6)) && ll.sequenceNumber == 0) ||
-                //Se sequenceNumber == 1 entao o BIT(6) == 0
-                (msg[2] & BIT(6) && ll.sequenceNumber == 1)) {
-                //Duplicado
-                printf("Duplicado\n");
-            }
+        if( //Se sequenceNumber == 0 entao o BIT(6) == 1
+            (msg[2] & BIT(6) && ll.sequenceNumber == 1) ||
+            //Se sequenceNumber == 1 entao o BIT(6) == 0
+            (!(msg[2] & BIT(6)) && ll.sequenceNumber == 0)) {
+            //Duplicado
+            printf("llread:: Duplicated\n");
+        } else
+            ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
     } else {
-		int a;
-		printf("Inicio\n");
-		for( a = 0; a < n; a++ )
-			printf("0x%02x\n", msg[a]);
-		printf("------------\n");
+	printf("llread:: Rejected packet\n");
         unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
         write_serial(fd, rej, FRAMA_US_LEN);
         return -1;
@@ -492,10 +490,11 @@ int read_serial(int fd, unsigned char *buf) {
 
         if( !hasFirst ) {
             //int k;
-            for( k = 0; k < nfr; k++ )
+            for( k = 0; k < nfr; k++ ) {
                 if( buf[k] == BYTE_FLAG ) {
                     break;
                 }
+			}
 
             if( k < nfr ) {
                 if( k ) {
@@ -517,8 +516,8 @@ int read_serial(int fd, unsigned char *buf) {
 
             if( k < nfr ) {
 				if( handleMessage(k+1, buf, A_T) != ERR || handleMessage(k+1, buf, A_R) != ERR ) {
-            alarm(0);
-            break;
+				    alarm(0);
+				    break;
 				} else {
   					memmove(buf, buf + k, nfr - k);
   					nfr -= k;
@@ -542,7 +541,7 @@ int build_frame_i(char address, int sequence_number, unsigned char **data, unsig
     int i;
     for(i = 1; i < length; i++)
         bcc2 ^= (*data)[i];
-
+	printf("build_frame_i:: realloc\n");
     unsigned char *tmp = realloc(*data, sizeof(unsigned char) * frame_length);
     if (tmp == NULL)
         return -1;
