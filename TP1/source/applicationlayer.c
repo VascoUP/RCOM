@@ -373,12 +373,12 @@ int main(int argc, char **argv) {
 	printf("\n\n------------------Statistics-----------------\n\n");
 
 	if( strcmp("transmitter", argv[1]) == 0){
-		printf("Nº frames sent: %d\n", stat.numFrameSend);
+		printf("Nº frames sent (START and END frames included): %d\n", stat.numFrameSend);
 		printf("Nº time-out: %d\n", stat.numTimeOut);
 	}
 
 	else {
-		printf("Nº frames received: %d\n", stat.numFrameReceive);
+		printf("Nº frames received (START and END frames included): %d\n", stat.numFrameReceive);
 		printf("Nº frames repeated: %d\n", stat.numFrameRepeat);
 		printf("Nº rejects: %d\n", stat.numREJ);
 	}
