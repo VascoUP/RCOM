@@ -20,7 +20,7 @@ typedef struct {
 } fileInfo;
 
 //Only used by the transmitter
-unsigned char* load_file(char *path, int *length, fileInfo *info) {
+unsigned char* load_file(char *path, fileInfo *info) {
 
 	FILE *fp;
 	if( (fp = fopen(path, "r")) == NULL ) {
@@ -29,14 +29,12 @@ unsigned char* load_file(char *path, int *length, fileInfo *info) {
 	}
 
 	fseek(fp, 0, SEEK_END);
-	*length = ftell(fp);
+	info->size = ftell(fp);
+	info->read_size = 0;
 	rewind(fp);
 
-	info->size = *length;
-	info->read_size = 0;
-
-	unsigned char *data = malloc(sizeof(char) * (*length + 1));
-	fread(data, *length, 1, fp);
+	unsigned char *data = malloc(sizeof(char) * (info->size + 1));
+	fread(data, info->size, 1, fp);
 
 	fclose(fp);
 
@@ -129,7 +127,7 @@ unsigned char* build_control_packet( unsigned int control, int file_size, char *
 }
 
 int unpack_data_packet( unsigned char** data, unsigned int sequence_number ) {
-	int length = (int) ((*data)[2] << 8 | (*data)[3]);	
+	int length = (int) ((*data)[2] << 8 | (*data)[3]);
 	if( length <= 0 ) {
 		printf("unpack_data_packet:: Packet length is invalid\n");
 		return -1;
@@ -143,9 +141,7 @@ int unpack_data_packet( unsigned char** data, unsigned int sequence_number ) {
 
 	memmove(*data, *data + 4, length);
 
-	printf("unpack_data_packet:: realloc %d\n", length);
 	unsigned char* tmp = realloc(*data, length * sizeof(unsigned char));
-	printf("unpack_data_packet:: after realloc\n");
 	if( tmp == NULL ) {
 		printf("unpack_data_packet:: Error reallocing memory\n");
 		return -1;
@@ -157,7 +153,6 @@ int unpack_data_packet( unsigned char** data, unsigned int sequence_number ) {
 
 int build_data_packet( unsigned int sequenceNumber, unsigned int nBytes, unsigned char **data ) {
 
-	printf("build_data_packet:: realloc\n");	
 	unsigned char* tmp = realloc(*data, nBytes + 4 * sizeof(unsigned char));
 	if( tmp == NULL ) {
 		printf("build_data_packet:: Error reallocing memory\n");
@@ -175,14 +170,14 @@ int build_data_packet( unsigned int sequenceNumber, unsigned int nBytes, unsigne
 }
 
 void send_file(applicationLayer app, char *file) {
-	int file_size;
+
 	int length;
 
 	fileInfo info;
 
-	unsigned char *loaded_file = load_file(file, &file_size, &info);
+	unsigned char *loaded_file = load_file(file, &info);
 
-	unsigned char *control = build_control_packet(START_PACKET, file_size, file, &length);
+	unsigned char *control = build_control_packet(START_PACKET, info.size, file, &length);
 	llwrite( app.fileDescriptor, control, length );
 	free(control);
 
@@ -191,10 +186,10 @@ void send_file(applicationLayer app, char *file) {
 	int packet_size;
 	unsigned char *packet;
 
-	for( index = 0; index < file_size; index += 124 ) {
+	for( index = 0; index < info.size; index += 124 ) {
 
 		//Last packet might have to be shorter than the others
-		data_size = (file_size - index < 124) ? file_size - index : 124;
+		data_size = (info.size - index < 124) ? info.size - index : 124;
 
 		packet = malloc(data_size * sizeof(unsigned char));
 
@@ -217,10 +212,10 @@ void send_file(applicationLayer app, char *file) {
 		free(packet);
 	}
 
-	if( index < file_size )
+	if( index < info.size )
 		printf("Trying to send end packet\n");
 
-	control = build_control_packet(END_PACKET, file_size, file, &length);
+	control = build_control_packet(END_PACKET, info.size, file, &length);
 	llwrite( app.fileDescriptor, control, length );
 	free(control);
 
@@ -282,7 +277,7 @@ int receive_file( applicationLayer app ) {
 			continue;
 		type = handler_read(buffer, length, &info, start, &(app.sequence_number));
 		if( type == DATA_PACKET ) {
-			printf("%d - Received %d out of %d ( %d%% )\nSequence number: %d\n", i++, info.read_size, info.size, 
+			printf("%d - Received %d out of %d ( %d%% )\nSequence number: %d\n", i++, info.read_size, info.size,
 										info.read_size * 100 / info.size, app.sequence_number );
 		} else if( type == START_PACKET ) {
 			start = 1;
