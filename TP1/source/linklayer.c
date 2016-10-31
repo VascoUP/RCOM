@@ -541,7 +541,7 @@ int build_frame_i(char address, int sequence_number, unsigned char **data, unsig
     int i;
     for(i = 1; i < length; i++)
         bcc2 ^= (*data)[i];
-	printf("build_frame_i:: realloc\n");
+    printf("build_frame_i:: realloc\n");
     unsigned char *tmp = realloc(*data, sizeof(unsigned char) * frame_length);
     if (tmp == NULL)
         return -1;
