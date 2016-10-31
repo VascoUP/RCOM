@@ -219,7 +219,6 @@ int llopen(int porta, int status) {
             return -1;
         }
 
-        incTimeOut();
         flag = 1;
         counter = 0;
 
@@ -339,7 +338,6 @@ int llread(int fd, unsigned char ** buffer) {
         if( destuffing(&msg, n) != -1 ) {
           *buffer = msg;
 
-          incFrameReceive();
           return n; //return # characters read | -1 if error
         }
 
@@ -348,7 +346,6 @@ int llread(int fd, unsigned char ** buffer) {
     printf("llread:: Rejected packet\n");
     unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
     write_serial(fd, rej, FRAMA_US_LEN);
-    incREJSend();
     return -1;
 
 }
@@ -396,14 +393,11 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             break;
         } else if( tr == TRAMA_REJ ) {
             printf("llwrite:: Packet rejected\n");
-            incREJReceive();
             alarm(0);
             counter++;
             flag = 1;
         }
     }
-
-    incFrameSend();
 
     return counter == ll.numTransmissions ? -1 : n; //return # characters written | -1 if error
 }

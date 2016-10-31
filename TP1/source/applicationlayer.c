@@ -369,7 +369,7 @@ int main(int argc, char **argv) {
 		return -1;
 
 	statistics stat = getStatistics();
-	printf("Statistics: \n");
+	printf("\n\n------------------Statistics-----------------\n\n");
 
 	printf("Nº frames sent: %d\n", stat.numFrameSend);
 	printf("Nº frames received: %d\n", stat.numFrameReceive);
