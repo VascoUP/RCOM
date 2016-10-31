@@ -13,6 +13,17 @@ void getInformation() {
 	strcpy(transmitter.fileName, file);
 
 	printf("%s - %s\n", receiver.fileName, transmitter.fileName);
+
+	int maxLength;
+	printf("\nChoose the maximum length of I frame: ");
+	scanf("%d", &maxLength);
+	fflush(stdin);
+
+	while(maxLength < 0){
+		printf("\nYou need to choose a positive number: ");
+		scanf("%d", &maxLength);
+		fflush(stdin);
+	}
 	
 	int timeout;
 	printf("\nChoose the time-out that you prefer in seconds (0 is the default value - 3 seconds): ");

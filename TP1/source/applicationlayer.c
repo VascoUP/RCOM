@@ -1,5 +1,6 @@
 
 #include "linklayer.h"
+#include "statistics.h"
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -366,5 +367,15 @@ int main(int argc, char **argv) {
 
 	if( count == 3 )
 		return -1;
+
+	statistics stat = getStatistics();
+	printf("Statistics: \n");
+
+	printf("Nº frames sent: %d\n", stat.numFrameSend);
+	printf("Nº frames received: %d\n", stat.numFrameReceive);
+	printf("Nº time-out: %d\n", stat.numTimeOut);
+	printf("Nº rejects sent: %d\n", stat.numREJSend);
+	printf("Nº rejects received: %d\n", stat.numREJReceive);
+
 	return 0;
 }

@@ -7,8 +7,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#define MAX_LENGTH 			256
-
 #define DEFAULT_TIMEOUT		3
 #define DEFAULT_NUMTRANS   	3
 
@@ -24,14 +22,15 @@
 typedef struct {
   char fileName[MAX_LENGTH];
   int timeout;
-  int baudrate; //baurate é int??????????
+  int baudrate;
 }receiverInfo;
 
 typedef struct {
   char fileName[MAX_LENGTH];
+  int maxLengthTrama;
   int numTransmissions;
   int timeout;
-  int baudrate; //baurate é int??????????
+  int baudrate;
 }transmitterInfo;
 
 void getInformation();

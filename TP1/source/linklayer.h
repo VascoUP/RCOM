@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "statistics.h"
+
 #define BIT(n)      0x01 << n
 
 #define UNDEFINED   -2

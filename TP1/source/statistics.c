@@ -27,7 +27,7 @@ void incREJSend(){
 }
 
 void incREJReceive(){
-    stat.numREJREceive ++;
+    stat.numREJReceive ++;
 }
 
 statistics getStatistics() {
