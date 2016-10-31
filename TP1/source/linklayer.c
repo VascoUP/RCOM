@@ -381,7 +381,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
             flag = 1;
             counter = 0;
-
+ 
             break;
         } else if( tr == TRAMA_REJ ) {
             printf("llwrite:: Packet rejected\n");
