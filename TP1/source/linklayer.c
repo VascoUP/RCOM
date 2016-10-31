@@ -132,6 +132,10 @@ int destuffing(unsigned char **buffer, unsigned int length) {
     }
 
     int newlength = length - count;
+	if( newlength <= 0 ) {
+		printf("destuffing:: New array length is invalid\n");
+		return -1;
+	}
     unsigned char *temp = realloc(*buffer, newlength * sizeof(unsigned char));
     if (temp == NULL) {
         return -1;
@@ -513,11 +517,11 @@ int read_serial(int fd, unsigned char *buf) {
 
             if( k < nfr ) {
 				if( handleMessage(k+1, buf, A_T) != ERR || handleMessage(k+1, buf, A_R) != ERR ) {
-		            alarm(0);
-		            break;
+            alarm(0);
+            break;
 				} else {
-					memmove(buf, buf + k, nfr - k);
-					nfr -= k;
+  					memmove(buf, buf + k, nfr - k);
+  					nfr -= k;
 				}
             }
         }
