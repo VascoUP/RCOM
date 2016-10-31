@@ -9,7 +9,6 @@ void getInformation() {
 	printf("\nWrite the file's name: ");
 	fgets(file, MAX_LENGTH, stdin); //diz que gets é perigoso
 
-	strcpy(receiver.fileName, file);
 	strcpy(transmitter.fileName, file);
 
 	printf("%s - %s\n", receiver.fileName, transmitter.fileName);
@@ -115,4 +114,17 @@ receiverInfo getReceiverInfo() {
 
 transmitterInfo getTransmitterInfo() {
   return transmitter;
+}
+
+int verifyInfo(){
+	
+	int boolean = 1;
+	if(transmitter.baudrate != receiver.baudrate){
+		printf("Baudrate is not the same\n");
+		boolean = 0;
+	}
+	//ver o que se pode testar mais
+
+	return boolean;
+	
 }
