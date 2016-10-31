@@ -127,16 +127,17 @@ int destuffing(unsigned char **buffer, unsigned int length) {
         if (*(*buffer + i) == BYTE_ESCAPE) {
             memmove(*buffer + i, *buffer + i + 1, length - i);
             *(*buffer + i) = *(*buffer + i) ^ 0x20;
+            printf("0x%02x\n", *(*buffer + i));
             count++;
         }
     }
-
     int newlength = length - count;
-	if( newlength <= 0 ) {
-		printf("destuffing:: New array length is invalid\n");
-		return -1;
-	}
-	printf("destuffing:: realloc\n");
+    printf("%d %d %d\n", length, count, newlength);
+	  if( newlength <= 0 ) {
+		    printf("destuffing:: New array length is invalid\n");
+		      return -1;
+	  }
+
     unsigned char *temp = realloc(*buffer, newlength * sizeof(unsigned char));
     if (temp == NULL) {
         return -1;
@@ -155,7 +156,7 @@ int stuffing(unsigned char **buffer, unsigned int length) {
     }
 
     int newlength = length + count;
-	printf("stuffing:: realloc\n");
+
     unsigned char *temp = realloc(*buffer, newlength * sizeof(unsigned char));
     if (temp == NULL) {
         return -1;
@@ -287,7 +288,7 @@ int llclose(int fd) {
 
         write_serial(fd, disc, FRAMA_US_LEN);
 
-        do {	
+        do {
             k = read_serial(fd, buffer);
             if( k == -1 )
                 return -1;
@@ -328,20 +329,24 @@ int llread(int fd, unsigned char ** buffer) {
             printf("llread:: Duplicated\n");
         } else
             ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
-    } else {
-	printf("llread:: Rejected packet\n");
-        unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
-        write_serial(fd, rej, FRAMA_US_LEN);
-        return -1;
+
+        n -= 6;
+        memmove(msg, msg + 4 * sizeof(unsigned char), n);
+
+        if( destuffing(&msg, n) != -1 ) {
+          *buffer = msg;
+
+
+          return n; //return # characters read | -1 if error
+        }
+
     }
 
-    n -= 6;
-    memmove(msg, msg + 4 * sizeof(unsigned char), n);
+    printf("llread:: Rejected packet\n");
+    unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
+    write_serial(fd, rej, FRAMA_US_LEN);
+    return -1;
 
-    destuffing(&msg, n);
-    *buffer = msg;
-
-    return n; //return # characters read | -1 if error
 }
 
 int llwrite(int fd, unsigned char *buffer, unsigned int length) {
@@ -383,7 +388,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
             flag = 1;
             counter = 0;
- 
+
             break;
         } else if( tr == TRAMA_REJ ) {
             printf("llwrite:: Packet rejected\n");
@@ -541,7 +546,7 @@ int build_frame_i(char address, int sequence_number, unsigned char **data, unsig
     int i;
     for(i = 1; i < length; i++)
         bcc2 ^= (*data)[i];
-	printf("build_frame_i:: realloc\n");
+
     unsigned char *tmp = realloc(*data, sizeof(unsigned char) * frame_length);
     if (tmp == NULL)
         return -1;

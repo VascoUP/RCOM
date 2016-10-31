@@ -128,7 +128,7 @@ unsigned char* build_control_packet( unsigned int control, int file_size, char *
 }
 
 int unpack_data_packet( unsigned char** data, unsigned int sequence_number ) {
-	int length = (int) ((*data)[2] << 8 | (*data)[3]);	
+	int length = (int) ((*data)[2] << 8 | (*data)[3]);
 	if( length <= 0 ) {
 		printf("unpack_data_packet:: Packet length is invalid\n");
 		return -1;
@@ -142,9 +142,7 @@ int unpack_data_packet( unsigned char** data, unsigned int sequence_number ) {
 
 	memmove(*data, *data + 4, length);
 
-	printf("unpack_data_packet:: realloc %d\n", length);
 	unsigned char* tmp = realloc(*data, length * sizeof(unsigned char));
-	printf("unpack_data_packet:: after realloc\n");
 	if( tmp == NULL ) {
 		printf("unpack_data_packet:: Error reallocing memory\n");
 		return -1;
@@ -156,7 +154,6 @@ int unpack_data_packet( unsigned char** data, unsigned int sequence_number ) {
 
 int build_data_packet( unsigned int sequenceNumber, unsigned int nBytes, unsigned char **data ) {
 
-	printf("build_data_packet:: realloc\n");	
 	unsigned char* tmp = realloc(*data, nBytes + 4 * sizeof(unsigned char));
 	if( tmp == NULL ) {
 		printf("build_data_packet:: Error reallocing memory\n");
@@ -281,7 +278,7 @@ int receive_file( applicationLayer app ) {
 			continue;
 		type = handler_read(buffer, length, &info, start, &(app.sequence_number));
 		if( type == DATA_PACKET ) {
-			printf("%d - Received %d out of %d ( %d%% )\nSequence number: %d\n", i++, info.read_size, info.size, 
+			printf("%d - Received %d out of %d ( %d%% )\nSequence number: %d\n", i++, info.read_size, info.size,
 										info.read_size * 100 / info.size, app.sequence_number );
 		} else if( type == START_PACKET ) {
 			start = 1;
