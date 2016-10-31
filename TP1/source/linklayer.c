@@ -314,7 +314,7 @@ int llread(int fd, unsigned char ** buffer) {
             unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_RR);
             ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
             write_serial(fd, rr, FRAMA_US_LEN);
-            
+
             if( //Se sequenceNumber == 0 entao o BIT(6) == 1
                 (!(msg[2] & BIT(6)) && ll.sequenceNumber == 0) ||
                 //Se sequenceNumber == 1 entao o BIT(6) == 0
@@ -323,6 +323,11 @@ int llread(int fd, unsigned char ** buffer) {
                 printf("Duplicado\n");
             }
     } else {
+		int a;
+		printf("Inicio\n");
+		for( a = 0; a < n; a++ )
+			printf("0x%02x\n", msg[a]);
+		printf("------------\n");
         unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
         write_serial(fd, rej, FRAMA_US_LEN);
         return -1;
@@ -355,8 +360,10 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
 
     unsigned char resp[MAX_LEN];
     int k, tr, n = stuffing(&buffer, length);
-    if( n < 0 )
+    if( n < 0 ) {
+        printf("llwrite:: Error stuffing the packet\n");
         return n;
+    }
 
     n = build_frame_i(BYTE_AT, ll.sequenceNumber, &buffer, n);
 
@@ -377,6 +384,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
 
             break;
         } else if( tr == TRAMA_REJ ) {
+            printf("llwrite:: Packet rejected\n");
             alarm(0);
             counter++;
             flag = 1;
@@ -464,7 +472,7 @@ int write_serial(int fd, unsigned char *msg, unsigned int length) {
 int read_serial(int fd, unsigned char *buf) {
     if( buf == NULL )
       return -1;
-      
+
     unsigned int max_len = MAX_LEN;
     int hasFirst = 0, nfr = 0;
     int iter = 0;
@@ -499,14 +507,18 @@ int read_serial(int fd, unsigned char *buf) {
 
         if(hasFirst && nfr > 1) {
             for( k = 1; k < nfr; k++ ) {
-                if( buf[k] == BYTE_FLAG ) {
+                if( buf[k] == BYTE_FLAG )
                     break;
-                }
             }
 
             if( k < nfr ) {
-                alarm(0);
-                break;
+				if( handleMessage(k+1, buf, A_T) != ERR || handleMessage(k+1, buf, A_R) != ERR ) {
+		            alarm(0);
+		            break;
+				} else {
+					memmove(buf, buf + k, nfr - k);
+					nfr -= k;
+				}
             }
         }
 
@@ -516,7 +528,7 @@ int read_serial(int fd, unsigned char *buf) {
         iter++;
     }
 
-    return nfr;
+    return k+1;
 }
 
 int build_frame_i(char address, int sequence_number, unsigned char **data, unsigned int length) {

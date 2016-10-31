@@ -43,7 +43,7 @@ unsigned char* load_file(char *path, int *length, fileInfo *info) {
 }
 
 int open_file( char* path ) {
-    int status = remove(path);
+    int status = unlink(path);
     if( status != 0 )
         printf("Error removing the file %s\n", path);
 
