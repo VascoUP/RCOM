@@ -5,9 +5,9 @@ statistics stat;
 void setStatistics(){
     stat.numFrameSend = 0;
     stat.numFrameReceive = 0;
+    stat.numFrameRepeat = 0;
     stat.numTimeOut = 0;
-    stat.numREJSend = 0;
-    stat.numREJReceive = 0;
+    stat.numREJ = 0;
 }
 
 void incFrameSend(){
@@ -18,16 +18,16 @@ void incFrameReceive(){
     stat.numFrameReceive ++;
 }
 
+void incFrameRepeat(){
+    stat.numFrameRepeat ++;
+}
+
 void incTimeOut(){
     stat.numTimeOut ++;
 }
 
-void incREJSend(){
-    stat.numREJSend ++;
-}
-
-void incREJReceive(){
-    stat.numREJReceive ++;
+void incREJ(){
+    stat.numREJ ++;
 }
 
 statistics getStatistics() {

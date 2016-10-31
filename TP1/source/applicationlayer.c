@@ -369,13 +369,19 @@ int main(int argc, char **argv) {
 		return -1;
 
 	statistics stat = getStatistics();
+
 	printf("\n\n------------------Statistics-----------------\n\n");
 
-	printf("Nº frames sent: %d\n", stat.numFrameSend);
-	printf("Nº frames received: %d\n", stat.numFrameReceive);
-	printf("Nº time-out: %d\n", stat.numTimeOut);
-	printf("Nº rejects sent: %d\n", stat.numREJSend);
-	printf("Nº rejects received: %d\n", stat.numREJReceive);
+	if( strcmp("transmitter", argv[1]) == 0){
+		printf("Nº frames sent: %d\n", stat.numFrameSend);
+		printf("Nº time-out: %d\n", stat.numTimeOut);
+	}
+
+	else {
+		printf("Nº frames received: %d\n", stat.numFrameReceive);
+		printf("Nº frames repeated: %d\n", stat.numFrameRepeat);
+		printf("Nº rejects: %d\n", stat.numREJ);
+	}
 
 	return 0;
 }

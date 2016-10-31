@@ -36,6 +36,7 @@ static int build_frame_i(char address, int sequence_number, unsigned char **data
 
 void atende() {
     printf("Resending\n");
+    incTimeOut();
     counter++;
     flag = 1;
 }
@@ -328,6 +329,7 @@ int llread(int fd, unsigned char ** buffer) {
             //Se sequenceNumber == 1 entao o BIT(6) == 0
             (!(msg[2] & BIT(6)) && ll.sequenceNumber == 0)) {
             //Duplicado
+	    incFrameRepeat();
             printf("llread:: Duplicated\n");
         } else
             ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
@@ -337,6 +339,8 @@ int llread(int fd, unsigned char ** buffer) {
 
         if( destuffing(&msg, n) != -1 ) {
           *buffer = msg;
+
+	incFrameReceive();
 
           return n; //return # characters read | -1 if error
         }
@@ -393,11 +397,14 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             break;
         } else if( tr == TRAMA_REJ ) {
             printf("llwrite:: Packet rejected\n");
+	    incREJ();
             alarm(0);
             counter++;
             flag = 1;
         }
     }
+
+    incFrameSend();
 
     return counter == ll.numTransmissions ? -1 : n; //return # characters written | -1 if error
 }
