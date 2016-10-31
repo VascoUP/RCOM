@@ -43,7 +43,7 @@ unsigned char* load_file(char *path, int *length, fileInfo *info) {
 }
 
 int open_file( char* path ) {
-    int status = remove(path);
+    int status = unlink(path);
     if( status != 0 )
         printf("Error removing the file %s\n", path);
 
@@ -127,10 +127,15 @@ unsigned char* build_control_packet( unsigned int control, int file_size, char *
 }
 
 int unpack_data_packet( unsigned char** data ) {
-	int length = (int) ((*data)[2] << 8 | (*data)[3]);
+	int length = (int) ((*data)[2] << 8 | (*data)[3]);	
+	if( length <= 0 ) {
+		printf("unpack_data_packet:: Packet length is invalid\n");
+		return -1;
+	}
 	//int sequence_number = (int) (*data)[1];
 
 	memmove(*data, *data + 4, length);
+
 	unsigned char* tmp = realloc(*data, length * sizeof(unsigned char));
 	if( tmp == NULL ) {
 		printf("unpack_data_packet:: Error reallocing memory\n");

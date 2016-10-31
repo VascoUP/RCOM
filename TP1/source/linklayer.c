@@ -132,6 +132,10 @@ int destuffing(unsigned char **buffer, unsigned int length) {
     }
 
     int newlength = length - count;
+	if( newlength <= 0 ) {
+		printf("destuffing:: New array length is invalid\n");
+		return -1;
+	}
     unsigned char *temp = realloc(*buffer, newlength * sizeof(unsigned char));
     if (temp == NULL) {
         return -1;
@@ -323,6 +327,11 @@ int llread(int fd, unsigned char ** buffer) {
                 printf("Duplicado\n");
             }
     } else {
+		int a;
+		printf("Inicio\n");
+		for( a = 0; a < n; a++ )
+			printf("0x%02x\n", msg[a]);
+		printf("------------\n");
         unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
         write_serial(fd, rej, FRAMA_US_LEN);
         return -1;
@@ -499,14 +508,18 @@ int read_serial(int fd, unsigned char *buf) {
 
         if(hasFirst && nfr > 1) {
             for( k = 1; k < nfr; k++ ) {
-                if( buf[k] == BYTE_FLAG ) {
+                if( buf[k] == BYTE_FLAG )
                     break;
-                }
             }
 
             if( k < nfr ) {
-                alarm(0);
-                break;
+				if( handleMessage(k+1, buf, A_T) != ERR || handleMessage(k+1, buf, A_R) != ERR ) {
+		            alarm(0);
+		            break;
+				} else {
+					memmove(buf, buf + k, nfr - k);
+					nfr -= k;    
+				}
             }
         }
 
@@ -516,7 +529,7 @@ int read_serial(int fd, unsigned char *buf) {
         iter++;
     }
 
-    return nfr;
+    return k+1;
 }
 
 int build_frame_i(char address, int sequence_number, unsigned char **data, unsigned int length) {
