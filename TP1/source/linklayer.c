@@ -1,14 +1,5 @@
 #include "linklayer.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <unistd.h>
-#include <signal.h>
 /*
 TO DO:
     - Usar build_frame_us em todas as situacoes possiveis quando estiver testado
@@ -55,15 +46,16 @@ unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
             if( msg[i] == BYTE_FLAG ) {
                 f1 = msg[i];
             }
-        //Campo de endereco (tem de vir logo a seguir à primeira Flag)
+        //Address field (it needs to come right after the first Flag)
         } else if( a == 0 && i > 0 && msg[i-1] == f1 ) {
             if( (msg[i] == BYTE_AT && type_a == A_T) || (msg[i] == BYTE_AR && type_a == A_R) ) {
               a = msg[i];
             }
-            else {//Se nao for o campo de endereco returnar erro
+            else {//If it isn't the address field, this function returns an error
               return ERR;
             }
-        //Campo de controlo (tem de vir logo a seguir ao campo de endereco)
+      
+        //Control field (it needs to come right after the address field)
         } else if( msg[i-1] == a && type == UNDEFINED ) {
             switch( msg[i] ) {
             case BYTE_C_I:
@@ -87,11 +79,12 @@ unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
             case BYTE_C_REJ2:
                 type = TRAMA_REJ;
                 break;
-            default: //Se nenhum deles corresponder a um campo de controlo valido
+            default: //If any of them corresponds to a valid control field
                 return ERR;
             }
               c = msg[i];
-        //Campo de protecao (tem de vir antes do campo de controlo)
+
+        //Protection field (it needs to come before the control field)
         } else if( msg[i-1] == c && bcc1 == 0 ) {
             if( (a ^ c) == msg[i] ) {
                 bcc1 = msg[i];
@@ -99,8 +92,8 @@ unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
             else {
                 return ERR;
               }
-        //Flag - 2 (tem de vir antes do campo de protecao
-        //              MENOS quando se trata de uma trama I)
+        /*Flag - 2 (it needs to come before the protection field
+                     unless when it is a Frame I)*/
         } else if( msg[i] == BYTE_FLAG && type == TRAMA_I ) {
             if( msg[i-1] == dataBcc ) {
                 return type;
@@ -130,12 +123,10 @@ int destuffing(unsigned char **buffer, unsigned int length) {
         if (*(*buffer + i) == BYTE_ESCAPE) {
             memmove(*buffer + i, *buffer + i + 1, length - i);
             *(*buffer + i) = *(*buffer + i) ^ 0x20;
-            printf("0x%02x\n", *(*buffer + i));
             count++;
         }
     }
     int newlength = length - count;
-    printf("%d %d %d\n", length, count, newlength);
 	  if( newlength <= 0 ) {
 		    printf("destuffing:: New array length is invalid\n");
 		      return -1;
@@ -182,11 +173,12 @@ int llopen(int porta, int status, int baudrate, int timeOut, int numTransmission
     int fd;
     if((fd = open_serial(porta, status, baudrate, timeOut, numTransmissions)) == -1)  {
         printf("Erro open_serial\n");
-        return -1; //Retornar logo se der erro
+        return -1; //Returns -1 when open_serial gives an error
     }
 
-    setStatistics();
+    setStatistics(); //Initialize the statistics fields with 0
 
+    //Alarm functions
     struct sigaction actionAlarm;
     actionAlarm.sa_handler = atende;
     sigemptyset(&actionAlarm.sa_mask);
@@ -326,12 +318,12 @@ int llread(int fd, unsigned char ** buffer) {
         unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_RR);
         write_serial(fd, rr, FRAMA_US_LEN);
 
-        if( //Se sequenceNumber == 0 entao o BIT(6) == 1
+        if( //If sequenceNumber == 0 then BIT(6) == 1
             (msg[2] & BIT(6) && ll.sequenceNumber == 1) ||
-            //Se sequenceNumber == 1 entao o BIT(6) == 0
+            //If sequenceNumber == 1 then BIT(6) == 0
             (!(msg[2] & BIT(6)) && ll.sequenceNumber == 0)) {
-            //Duplicado
-	    incFrameRepeat();
+            //Duplicated
+	        incFrameRepeat();
             printf("llread:: Duplicated\n");
         } else
             ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
@@ -344,11 +336,12 @@ int llread(int fd, unsigned char ** buffer) {
 
 	incFrameReceive();
 
-          return n; //return # characters read | -1 if error
+          return n; //Returns the number of characters read | -1 if error
         }
 
     }
 
+    //Rejects the packet
     printf("llread:: Rejected packet\n");
     unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
     incREJReceive();
@@ -409,7 +402,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
 
     incFrameSend();
 
-    return counter == ll.numTransmissions ? -1 : n; //return # characters written | -1 if error
+    return counter == ll.numTransmissions ? -1 : n; //Returns the number of characters written | -1 if error
 }
 
 int open_serial(int porta, int status, int baudrate, int timeOut, int numTransmissions) {
@@ -455,7 +448,7 @@ int open_serial(int porta, int status, int baudrate, int timeOut, int numTransmi
     tcflush(fd, TCIOFLUSH);
 
     if (tcsetattr(fd, TCSANOW, &newtio) == -1) {
-        printf("Erro ao alterar os atributos\n");
+        printf("Error changing the attributes\n");
         return -1;
     }
 
@@ -505,7 +498,6 @@ int read_serial(int fd, unsigned char *buf) {
         nfr += n;
 
         if( !hasFirst ) {
-            //int k;
             for( k = 0; k < nfr; k++ ) {
                 if( buf[k] == BYTE_FLAG ) {
                     break;

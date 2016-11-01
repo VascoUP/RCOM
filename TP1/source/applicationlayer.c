@@ -10,17 +10,17 @@
 #include <fcntl.h>
 
 typedef struct {
-    int fd;
-    char *file_name;
-    unsigned int size;
-    unsigned int read_size;
+    int fd;                     //file descriptor
+    char *file_name;            //file name
+    unsigned int size;          //file size
+    unsigned int read_size;     //read size
 } fileInfo;
 
 typedef struct {
-    int fileDescriptor;
-    unsigned int sequence_number;
-    int status;         //TRANSMITTER | RECEIVER
-    fileInfo *info;
+    int fileDescriptor;             //file descriptor
+    unsigned int sequence_number;   //sequence number
+    int status;                     //TRANSMITTER | RECEIVER
+    fileInfo *info;                 //file information
 } applicationLayer;
 
 
@@ -171,7 +171,7 @@ int unpack_data_packet( unsigned char** data, unsigned int sequence_number ) {
     }
     int sq_num = (int) (*data)[1];
     if( (int)sequence_number - 1 == sq_num ) {
-        //Duplicado
+        //Duplicated
         printf("unpack_data_packet:: Duplicated packet\n");
         return -1;
     }
@@ -315,19 +315,19 @@ int handler_read( unsigned char* data, int length, applicationLayer* app ) {
             write_file(app->info->fd, data, length);
         }
 
-        return DATA_PACKET;       //Informa funcao receive_file que recebeu uma data packet
+        return DATA_PACKET;       //Informs the function receive_file that it receives an data packet
     } else if( type == START_PACKET ) {
-        //Se nao tiver recebido todas as informacoes necessarias
+        //If it didn't receive the necessary information
         return unpack_control_packet( data, length, app->info ) == -1 ? -1 : START_PACKET;
     } else if( type == END_PACKET ) {
 
         fileInfo info2;
-        //Se nao tiver recebido todas as informacoes necessarias
+        //If it didn't receive the necessary information
         return ( unpack_control_packet( data, length, &info2 ) == -1 ||
-            //Se alguma das informacoes estiver errada
+            //If any information is wrong
             strcmp(info2.file_name, app->info->file_name) != 0 ||
             info2.size != app->info->size ||
-            //Ainda nao leu o start packet
+            //It didn't read the start packet already
             app->info->file_name == NULL ) ? -1 : END_PACKET;
     }
 
@@ -378,7 +378,7 @@ int main(int argc, char **argv) {
 
 	if( strcmp("receiver", argv[1])==0 ) {
 		if( argc != 2 ) {
-			printf("main:: Falta argumentos\n");
+			printf("main:: Some arguments are missing\n");
 			return -1;
 		}
 
@@ -387,7 +387,7 @@ int main(int argc, char **argv) {
 	}
 	else if( strcmp("transmitter", argv[1])==0 ) {
 		if( argc != 2 ) {
-			printf("main:: Falta argumentos\n");
+			printf("main:: Some arguments are missing\n");
 			return -1;
 		}
 
@@ -411,7 +411,7 @@ int main(int argc, char **argv) {
 	app.fileDescriptor = llopen( transmitter.port, app.status, transmitter.baudrate, transmitter.timeout, transmitter.numTransmissions);
 	app.sequence_number = 0;
 	if( app.fileDescriptor < 0 ) {
-		printf("main:: Erro ao abrir a porta de série\n");
+		printf("main:: Error opening the serial port\n");
 		return -1;
 	}
 
