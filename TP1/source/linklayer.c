@@ -29,7 +29,7 @@ void atende() {
     if( ++counter == ll.numTransmissions )
         printf("Disconneted\n");
     else
-        printf("Resending\n");
+        printf("Connecting\n");
     incTimeOut();
     counter++;
     flag = 1;
@@ -170,9 +170,10 @@ int stuffing(unsigned char **buffer, unsigned int length) {
 }
 
 int llopen(transmitterInfo info, int status) {
+
     int fd;
     if((fd = open_serial(info, status)) == -1)  {
-        printf("Erro open_serial\n");
+        printf("llopen:: Error open_serial\n");
         return -1; //Returns -1 when open_serial gives an error
     }
 
@@ -185,7 +186,7 @@ int llopen(transmitterInfo info, int status) {
     actionAlarm.sa_flags = 0;
 
     if(sigaction(SIGALRM, &actionAlarm, NULL) < 0){
-        fprintf(stderr, "Error activating the alarm\n");
+        fprintf(stderr, "llopen:: Error activating the alarm\n");
         return -1;
     }
 
@@ -196,11 +197,16 @@ int llopen(transmitterInfo info, int status) {
         unsigned char *set = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_SET);
 
         while(flag && counter < ll.numTransmissions) {
-            if( write_serial(fd, set, FRAMA_US_LEN) == -1 ) return -1;
+            if( write_serial(fd, set, FRAMA_US_LEN) == -1 ) {
+	            free(set);
+                return -1;
+            }
             alarm(ll.timeOut);
             flag = 0;
             if( ( k = read_serial(fd, buffer) ) != -1 ) {
-                if( handleMessage(k, buffer, A_T) == TRAMA_UA ) {
+                if( handleMessage(k, buffer, A_T) == TRAMA_UA ) {                    
+                    flag = 1;
+                    counter = 0;
                     break;
                 } else {
                     alarm(0);
@@ -210,28 +216,38 @@ int llopen(transmitterInfo info, int status) {
             }
         }
         if (counter == ll.numTransmissions) {
-            printf("Maximum number of transmissions\n");
+            printf("llopen:: Maximum number of time outs\n");
+	        free(set);
             return -1;
         }
 
-        flag = 1;
-        counter = 0;
-
-	      free(set);
+	    free(set);
     } else {
         do {
+            alarm(ll.timeOut);            
+            flag = 0;
+
             k = read_serial(fd, buffer);
             if( k == -1 ) {
                 printf("llopen:: Error reading from the serial port\n");
                 return -1;
             }
-        } while( handleMessage(k, buffer, A_T) != TRAMA_SET );
+        } while( handleMessage(k, buffer, A_T) != TRAMA_SET && counter < ll.numTransmissions );
+
+        if (counter == ll.numTransmissions) {
+            printf("llopen:: Maximum number of time outs\n");
+            return -1;
+        } else {
+            alarm(0);                    
+            flag = 1;
+            counter = 0;
+        }
 
         unsigned char *ua = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_UA);
 
         write_serial(fd, ua, FRAMA_US_LEN);
 
-	      free(ua);
+	    free(ua);
     }
 
     return fd;
@@ -251,7 +267,11 @@ int llclose(int fd) {
     if( ll.status == TRANSMITTER ) {
 
         while(flag && counter < ll.numTransmissions) {
-            if( write_serial(fd, disc, FRAMA_US_LEN) == -1 ) return -1;
+            if( write_serial(fd, disc, FRAMA_US_LEN) == -1 ) {
+                free(ua);
+                free(disc);
+                return -1;
+            }
 
             alarm(ll.timeOut);
             flag = 0;
@@ -270,26 +290,45 @@ int llclose(int fd) {
         }
 
         do {
-          if( write_serial(fd, ua, FRAMA_US_LEN) == 0 ) {
-            break;
-          }
-          counter++;
+            if( write_serial(fd, ua, FRAMA_US_LEN) == 0 ) {
+                break;
+            }
+            counter++;
        } while(counter < ll.numTransmissions && k > 0);
 
     } else {
         do {
             k = read_serial(fd, buffer);
-            if( k == -1 )
+            if( k == -1 ) {
+                free(ua);
+                free(disc);
                 return -1;
+            }
         } while( handleMessage(k, buffer, A_T) != TRAMA_DISC );
 
         write_serial(fd, disc, FRAMA_US_LEN);
 
         do {
+            alarm(ll.timeOut);            
+            flag = 0;
             k = read_serial(fd, buffer);
-            if( k == -1 )
+            if( k == -1 ) {
+                free(ua);
+                free(disc);
                 return -1;
-        } while( handleMessage(k, buffer, A_R) != TRAMA_UA );
+            }
+        } while( handleMessage(k, buffer, A_R) != TRAMA_UA && counter < ll.numTransmissions );
+
+        if (counter == ll.numTransmissions) {
+            printf("llopen:: Maximum number of time outs\n");
+            free(ua);
+            free(disc);
+            return -1;
+        } else {
+            alarm(0);                    
+            flag = 1;
+            counter = 0;
+        }
     }
 
     free(ua);
@@ -299,22 +338,26 @@ int llclose(int fd) {
 }
 
 int llread(int fd, unsigned char ** buffer) {
-    /*
-      1 - Espera leitura de trama I
-      2 - Enviar trama RR se leu mensagem com sucesso
-          (Reijeitar caso contrário, trama REJ)
-      3 - Returnar o que leu, ou negativo se deu erro
-    */
 
     flag = 1;
     counter = 0;
 
-    int n = -1;
+    int n = -1, type;
     unsigned char* msg =  malloc(ll.maxLengthTrama * sizeof(char));
-    if( (n = read_serial(fd, msg)) == -1)
-      return -1;
 
-    if ( handleMessage(n, msg, A_T) == TRAMA_I ) {
+    do {
+        alarm(ll.timeOut);            
+        flag = 0;
+        if( (n = read_serial(fd, msg)) == -1)
+            return -1;
+    } while( (type = handleMessage(n, msg, A_T)) != TRAMA_I && counter < ll.numTransmissions );
+
+    if( counter >= ll.numTransmissions ) {
+        free(msg);
+        return -1;
+    }
+
+    if ( type == TRAMA_I ) {
         unsigned char *rr = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_RR);
         write_serial(fd, rr, FRAMA_US_LEN);
 
@@ -332,13 +375,12 @@ int llread(int fd, unsigned char ** buffer) {
         memmove(msg, msg + 4 * sizeof(unsigned char), n);
 
         if( destuffing(&msg, n) != -1 ) {
-          *buffer = msg;
+            *buffer = msg;
 
-	incFrameReceive();
+	        incFrameReceive();
 
-          return n; //Returns the number of characters read | -1 if error
+            return n; //Returns the number of characters read | -1 if error
         }
-
     }
 
     //Rejects the packet
@@ -346,22 +388,14 @@ int llread(int fd, unsigned char ** buffer) {
     unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
     incREJReceive();
     write_serial(fd, rej, FRAMA_US_LEN);
+
+    free(msg);
+
     return -1;
 
 }
 
 int llwrite(int fd, unsigned char *buffer, unsigned int length) {
-    /*
-        1 - Enviar trama de informacao com <length> bytes mais os bytes de controlo
-            -> Poder acontecer não conseguir enviar, das duas uma:
-                1. Ou espera que de timeout (alarm)
-                2. Ou avanca para a proxima iteracao e incrementar o counter
-        2 - Esperar leitura de RR (pode ser REJ)
-            -> Se ler RR acaba a funcao
-            -> Da timeout o que quer dizer que tem de reenviar a trama I exatamente igual
-            -> Se receber REJ voltar a enviar, com isto tem de se incrementar o counter
-        3 - Dado sucesso de envio (acaba por receber RR) returnar 0, caso contrário, returnar negativo
-    */
 
     flag = 1;
     counter = 0;
