@@ -1,7 +1,5 @@
 
 #include "linklayer.h"
-#include "statistics.h"
-#include "interface.h"
 
 #include <string.h>
 #include <sys/types.h>
@@ -208,6 +206,7 @@ int build_data_packet( unsigned int sequenceNumber, unsigned int nBytes, unsigne
 
 void send_file(applicationLayer app, char *file) {
 
+    const int packet_max_size = transmitter.maxLengthTrama - 10;
     int length;
 
     unsigned char *loaded_file = load_file(file, app.info);
@@ -216,16 +215,16 @@ void send_file(applicationLayer app, char *file) {
     llwrite( app.fileDescriptor, control, length );
     free(control);
 
-    //Send file -> 124 bytes at a time (128 total) 
-    //Last one might be less than 124 bytes
+    //Send file -> packet_max_size bytes at a time (packet_max_size + 4 total) 
+    //Last one might be less than packet_max_size bytes
     unsigned int index, data_size, sent, i = 1;
     int packet_size;
     unsigned char *packet;
 
-    for( index = 0; index < app.info->size; index += 124 ) {
+    for( index = 0; index < app.info->size; index += packet_max_size ) {
 
         //Last packet might have to be shorter than the others
-        data_size = (app.info->size - index < 124) ? app.info->size - index : 124;
+        data_size = (app.info->size - index < packet_max_size) ? app.info->size - index : data_size;
 
         packet = malloc(data_size * sizeof(unsigned char));
 
@@ -262,6 +261,7 @@ void send_file(applicationLayer app, char *file) {
 
 void send_file2(applicationLayer app, char *path) {
     int fd, size;
+    int data_size = transmitter.maxLengthTrama - 10;
     fd = open_file2(path, TRANSMITTER);
     load_file_info(fd, app.info);
 
@@ -269,14 +269,14 @@ void send_file2(applicationLayer app, char *path) {
     llwrite(app.fileDescriptor, control, size);
     free(control);
 
-    unsigned int sent = 0;
-    while (sent < app.info->size) {
+    while (app.info->read_size < app.info->size) {
         int n = 0, packet_size;
-        unsigned char data;
+        unsigned char data[transmitter.maxLengthTrama];
         
-        n = read(fd, &data, 124);
+        n = read(fd, &data, data_size);
         if (n == -1) {
             printf("send_file2:: Error reading file\n");
+            break;
         }
 
         unsigned char *packet = malloc(n * sizeof(char));
@@ -292,8 +292,12 @@ void send_file2(applicationLayer app, char *path) {
             printf("send_file2:: Error writing data packet\n");
         }
 
-        sent += n;
+        app.info->read_size += n;
         app.sequence_number >= 255 ? app.sequence_number = 0 : app.sequence_number++;
+
+        printf("%d - Sent: %d out of %d ( %d%% )\n", 
+                app.sequence_number, app.info->read_size, 
+                app.info->size, app.info->read_size * 100 / app.info->size);
 
         free(packet);
     }
@@ -306,8 +310,10 @@ void send_file2(applicationLayer app, char *path) {
 // ----------------------------------------------------------------------------
 
 int handler_read( unsigned char* data, int length, applicationLayer* app ) {
+
     unsigned int type = (unsigned int) data[0];
     if( type == DATA_PACKET ) {
+
         int length = unpack_data_packet(&data, app->sequence_number);
         if( length != -1 ) {
             (app->sequence_number)++;
@@ -317,6 +323,7 @@ int handler_read( unsigned char* data, int length, applicationLayer* app ) {
 
         return DATA_PACKET;       //Informs the function receive_file that it receives an data packet
     } else if( type == START_PACKET ) {
+
         //If it didn't receive the necessary information
         return unpack_control_packet( data, length, app->info ) == -1 ? -1 : START_PACKET;
     } else if( type == END_PACKET ) {
@@ -329,6 +336,7 @@ int handler_read( unsigned char* data, int length, applicationLayer* app ) {
             info2.size != app->info->size ||
             //It didn't read the start packet already
             app->info->file_name == NULL ) ? -1 : END_PACKET;
+
     }
 
     printf("handler_read:: Didnt receive any of the possible types of packets\n");
@@ -341,33 +349,42 @@ int receive_file( applicationLayer app ) {
     
     app.info->file_name = NULL;
     app.info->read_size = 0;
-    int i = 1;
 
     while( 1 ) { //Keeps reading until it receives an end packet
 
         if( (length = llread( app.fileDescriptor, &buffer )) == -1 )
             continue;
+
         type = handler_read(buffer, length, &app);
+
         if( type == DATA_PACKET ) {
-            printf("%d - Received %d out of %d ( %d%% )\nSequence number: %d\n", i++, app.info->read_size, app.info->size,
-                                        app.info->read_size * 100 / app.info->size, app.sequence_number );
+
+            printf("%d - Received %d out of %d ( %d%% )\n", 
+                    app.sequence_number, app.info->read_size, app.info->size,
+                    app.info->read_size * 100 / app.info->size );
+
         } else if( type == START_PACKET ) {
+
             printf("receive_file:: Start packet\n");
             if( (app.info->fd = open_file( app.info->file_name )) == -1 ) {
                 printf("receive_file:: Unable to open the file %s\n", app.info->file_name);
                 break;
             }
+
         } else if( type == END_PACKET ) {
+
             printf("receive_file:: End packet\n");
             close_file( app.info->fd, app.info->file_name );
             break;
+
         } else
         printf("receive_file:: Error\n");
 
     }
 
     if(app.info->file_name != NULL)
-    free(app.info->file_name);
+        free(app.info->file_name);
+    free(app.info);
 
     return 0;
 }
@@ -394,7 +411,6 @@ int main(int argc, char **argv) {
 		app.status = TRANSMITTER;
 
 		getInformationTransmitter();
-		transmitter = getTransmitterInfo();
 
 		FILE *fp;
 		if( (fp = fopen(transmitter.fileName, "r")) == NULL ) {
@@ -408,7 +424,7 @@ int main(int argc, char **argv) {
 		return -1;
 	
 	app.info = (fileInfo *) malloc( sizeof(fileInfo));
-	app.fileDescriptor = llopen( transmitter.port, app.status, transmitter.baudrate, transmitter.timeout, transmitter.numTransmissions);
+	app.fileDescriptor = llopen(transmitter, app.status);
 	app.sequence_number = 0;
 	if( app.fileDescriptor < 0 ) {
 		printf("main:: Error opening the serial port\n");
@@ -418,7 +434,7 @@ int main(int argc, char **argv) {
 	if( app.status == TRANSMITTER ) {
 		send_file(app, transmitter.fileName);
 	} else {
-		receive_file(app);
+		receive_file(app); 
 	}
 
 	int count = 0;

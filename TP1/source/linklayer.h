@@ -9,6 +9,7 @@
 #include <signal.h>
 
 #include "statistics.h"
+#include "interface.h"
 
 #define BIT(n)      0x01 << n
 
@@ -61,10 +62,10 @@ typedef struct {
     unsigned int sequenceNumber;    //value = 0 | 1 ( alternate bettween each other )
     unsigned int timeOut;           //wait time before resending package
     unsigned int numTransmissions;  //maximum number of repeated transmissions
-    unsigned char frame[MAX_LEN];   //image to be sent
+    unsigned int maxLengthTrama;
 } linklayer;
 
-int llopen(int porta, int status, int baudrate, int timeOut, int numTransmissions);
+int llopen(transmitterInfo info, int status);
 
 int llclose(int fd);
 

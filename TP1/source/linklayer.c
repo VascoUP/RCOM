@@ -17,7 +17,7 @@ static int handleMessage(unsigned int length, unsigned char msg[], int type_a);
 static int destuffing(unsigned char **buffer, unsigned int length);
 static int stuffing(unsigned char **buffer, unsigned int length);
 
-static int open_serial(int porta, int status, int baudrate, int timeOut, int numTransmisions);
+static int open_serial(transmitterInfo info, int status);
 static int close_serial(int fd);
 static int write_serial(int fd, unsigned char *msg, unsigned int length);
 static int read_serial(int fd, unsigned char *buf);
@@ -36,10 +36,10 @@ void atende() {
 }
 
 int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
-int i, type = UNDEFINED;
-unsigned char dataBcc = 0;
+    int i, type = UNDEFINED;
+    unsigned char dataBcc = 0;
 
-unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
+    unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
     for( i = 0; i < length; i++ ) {
         //Flag - 1
         if( f1 == 0 ) {
@@ -169,9 +169,9 @@ int stuffing(unsigned char **buffer, unsigned int length) {
     return newlength;
 }
 
-int llopen(int porta, int status, int baudrate, int timeOut, int numTransmissions) {
+int llopen(transmitterInfo info, int status) {
     int fd;
-    if((fd = open_serial(porta, status, baudrate, timeOut, numTransmissions)) == -1)  {
+    if((fd = open_serial(info, status)) == -1)  {
         printf("Erro open_serial\n");
         return -1; //Returns -1 when open_serial gives an error
     }
@@ -189,7 +189,7 @@ int llopen(int porta, int status, int baudrate, int timeOut, int numTransmission
         return -1;
     }
 
-    unsigned char buffer[MAX_LEN];
+    unsigned char buffer[info.maxLengthTrama];
     int k;
 
     if( ll.status == TRANSMITTER ) {
@@ -246,7 +246,7 @@ int llclose(int fd) {
     unsigned char *ua = build_frame_us(BYTE_AR, ll.sequenceNumber, TRAMA_UA);
     unsigned char *disc = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_DISC);
 
-    unsigned char buffer[MAX_LEN];
+    unsigned char buffer[ll.maxLengthTrama];
 
     if( ll.status == TRANSMITTER ) {
 
@@ -310,7 +310,7 @@ int llread(int fd, unsigned char ** buffer) {
     counter = 0;
 
     int n = -1;
-    unsigned char* msg =  malloc(MAX_LEN * sizeof(char));
+    unsigned char* msg =  malloc(ll.maxLengthTrama * sizeof(char));
     if( (n = read_serial(fd, msg)) == -1)
       return -1;
 
@@ -366,7 +366,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     flag = 1;
     counter = 0;
 
-    unsigned char resp[MAX_LEN];
+    unsigned char resp[ll.maxLengthTrama];
     int k, tr, n = stuffing(&buffer, length);
     if( n < 0 ) {
         printf("llwrite:: Error stuffing the packet\n");
@@ -405,25 +405,26 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     return counter == ll.numTransmissions ? -1 : n; //Returns the number of characters written | -1 if error
 }
 
-int open_serial(int porta, int status, int baudrate, int timeOut, int numTransmissions) {
+int open_serial(transmitterInfo info, int status) {
     int fd;
     struct termios newtio;
 
-    if (porta != 0 && porta != 1) {
+    if (info.port != 0 && info.port != 1) {
         printf("Numero errado da porta\n");
         return -1;
     }
 
-    ll.baudrate = baudrate;
-    if (sprintf(ll.port, "/dev/ttyS%d", porta) < 0) {
+    ll.baudrate = info.baudrate;
+    if (sprintf(ll.port, "/dev/ttyS%d", info.port) < 0) {
         printf("Erro ao criar string da porta\n");
         return -1;
     }
 
     ll.status = status;
-    ll.sequenceNumber = status == TRANSMITTER ? 0 : 1;
-    ll.timeOut = timeOut;
-    ll.numTransmissions = numTransmissions;
+    ll.sequenceNumber = (status == TRANSMITTER) ? 0 : 1;
+    ll.timeOut = info.timeOut;
+    ll.numTransmissions = info.numTransmissions;
+    ll.maxLengthTrama = info.maxLengthTrama;
 
     fd = open(ll.port, O_RDWR | O_NOCTTY);
     if (fd < 0) {
@@ -484,7 +485,7 @@ int read_serial(int fd, unsigned char *buf) {
     if( buf == NULL )
       return -1;
 
-    unsigned int max_len = MAX_LEN;
+    unsigned int max_len = ll.maxLengthTrama;
     int hasFirst = 0, nfr = 0;
     int iter = 0;
     int k;
