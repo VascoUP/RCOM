@@ -5,7 +5,7 @@ transmitterInfo transmitter;
 void getInformationTransmitter(){
 	printf("\nChoose the serial port name:\n");
 	printf("0 - /dev/ttyS0\n1 - /dev/ttyS1\n");
-	printf("Answer: ");
+	printf("\nAnswer: ");
 
 	int answer;
 	scanf("%d", &answer);
@@ -38,7 +38,32 @@ void getInformationTransmitter(){
 		scanf("%d", &maxLength);
 		fflush(stdin);
 	}
-	
+
+	int file_size;
+	FILE *fp;
+	fp = fopen(file, "r");
+	fseek(fp, 0, SEEK_END);
+	file_size = ftell(fp);
+	rewind(fp);
+
+	if(file_size < maxLength){
+		while(file_size < maxLength){
+			printf("\nThe value needs to bo lower than %d, because %d is the file size...\n", file_size, file_size);
+			printf("\nChoose the maximum length of I frame: ");
+			scanf("%d", &maxLength);
+			fflush(stdin);
+
+			while(maxLength < 0){
+			printf("\nYou need to choose a positive number: ");
+			scanf("%d", &maxLength);
+			fflush(stdin);
+			}
+		}
+	}
+
+	fclose(fp);
+	transmitter.maxLengthTrama = maxLength;
+
 	int timeout;
 	printf("\nChoose the time-out that you prefer in seconds (0 is the default value - 3 seconds): ");
 	scanf("%d", &timeout);
