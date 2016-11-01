@@ -7,7 +7,8 @@ void setStatistics(){
     stat.numFrameReceive = 0;
     stat.numFrameRepeat = 0;
     stat.numTimeOut = 0;
-    stat.numREJ = 0;
+    stat.numREJSend = 0;
+    stat.numREJReceive = 0;
 }
 
 void incFrameSend(){
@@ -26,8 +27,12 @@ void incTimeOut(){
     stat.numTimeOut ++;
 }
 
-void incREJ(){
-    stat.numREJ ++;
+void incREJSend(){
+    stat.numREJSend ++;
+}
+
+void incREJReceive(){
+    stat.numREJReceive ++;
 }
 
 statistics getStatistics() {

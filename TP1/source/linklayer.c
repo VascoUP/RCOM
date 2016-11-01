@@ -351,6 +351,7 @@ int llread(int fd, unsigned char ** buffer) {
 
     printf("llread:: Rejected packet\n");
     unsigned char *rej = build_frame_us( BYTE_AT, ll.sequenceNumber, TRAMA_REJ);
+    incREJReceive();
     write_serial(fd, rej, FRAMA_US_LEN);
     return -1;
 
@@ -399,7 +400,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
             break;
         } else if( tr == TRAMA_REJ ) {
             printf("llwrite:: Packet rejected\n");
-	    incREJ();
+	        incREJSend();
             alarm(0);
             counter++;
             flag = 1;

@@ -6,7 +6,8 @@ typedef struct {
     int numFrameReceive;
     int numFrameRepeat;
     int numTimeOut;
-    int numREJ;
+    int numREJSend;
+    int numREJReceive;
 } statistics;
 
 void setStatistics();
@@ -15,7 +16,8 @@ void incFrameSend();
 void incFrameReceive();
 void incFrameRepeat();
 void incTimeOut();
-void incREJ();
+void incREJSend();
+void incREJReceive();
 
 statistics getStatistics();
 

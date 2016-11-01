@@ -374,77 +374,78 @@ int receive_file( applicationLayer app ) {
 
 int main(int argc, char **argv) {
 
-    applicationLayer app;
+	applicationLayer app;
 
-    if( strcmp("receiver", argv[1])==0 ) {
-        if( argc != 2 ) {
-            printf("main:: Falta argumentos\n");
-            return -1;
-        }
+	if( strcmp("receiver", argv[1])==0 ) {
+		if( argc != 2 ) {
+			printf("main:: Falta argumentos\n");
+			return -1;
+		}
 
-        app.status = RECEIVER;
+		app.status = RECEIVER;
 
-    }
-    else if( strcmp("transmitter", argv[1])==0 ) {
-        if( argc != 2 ) {
-            printf("main:: Falta argumentos\n");
-            return -1;
-        }
+	}
+	else if( strcmp("transmitter", argv[1])==0 ) {
+		if( argc != 2 ) {
+			printf("main:: Falta argumentos\n");
+			return -1;
+		}
 
-        app.status = TRANSMITTER;
+		app.status = TRANSMITTER;
 
-        getInformationTransmitter();
-        transmitter = getTransmitterInfo();
+		getInformationTransmitter();
+		transmitter = getTransmitterInfo();
 
-        // ???
-        FILE *fp;
-        if( (fp = fopen(transmitter.fileName, "r")) == NULL ) {
-            printf("load_file:: Couldnt open %s\n", transmitter.fileName);
-            return -1;
-        }
-        fclose(fp);
-    }
-    else
-        return -1;
-    
-    app.info = (fileInfo *) malloc( sizeof(fileInfo));
-    app.fileDescriptor = llopen( transmitter.port, app.status, transmitter.baudrate, transmitter.timeout, transmitter.numTransmissions);
-    app.sequence_number = 0;
-    if( app.fileDescriptor < 0 ) {
-        printf("main:: Erro ao abrir a porta de série\n");
-        return -1;
-    }
+		FILE *fp;
+		if( (fp = fopen(transmitter.fileName, "r")) == NULL ) {
+			printf("load_file:: Couldnt open %s\n", transmitter.fileName);
+			return -1;
+		}
 
-    if( app.status == TRANSMITTER ) {
-        send_file(app, transmitter.fileName);
-    } else {
-        receive_file(app);
-    }
+		fclose(fp);
+	}
+	else
+		return -1;
+	
+	app.info = (fileInfo *) malloc( sizeof(fileInfo));
+	app.fileDescriptor = llopen( transmitter.port, app.status, transmitter.baudrate, transmitter.timeout, transmitter.numTransmissions);
+	app.sequence_number = 0;
+	if( app.fileDescriptor < 0 ) {
+		printf("main:: Erro ao abrir a porta de série\n");
+		return -1;
+	}
 
-    int count = 0;
-    do {
-        if( llclose(app.fileDescriptor) == 0 )
-            break;
-        count++;
-    } while( count < 3 );
+	if( app.status == TRANSMITTER ) {
+		send_file(app, transmitter.fileName);
+	} else {
+		receive_file(app);
+	}
 
-    if( count == 3 )
-        return -1;
+	int count = 0;
+	do {
+		if( llclose(app.fileDescriptor) == 0 )
+			break;
+		count++;
+	} while( count < 3 );
 
-    statistics stat = getStatistics();
+	if( count == 3 )
+		return -1;
 
-    if( strcmp("transmitter", argv[1]) == 0){
-        printf("\n\n------------------Statistics Transmitter-----------------\n\n");
-        printf("Nº frames sent (START and END frames included): %d\n", stat.numFrameSend);
-        printf("Nº time-out: %d\n", stat.numTimeOut);
-    }
+	statistics stat = getStatistics();
 
-    else {
-        printf("\n\n------------------Statistics Receiver-----------------\n\n");
-        printf("Nº frames received (START and END frames included): %d\n", stat.numFrameReceive);
-        printf("Nº frames repeated: %d\n", stat.numFrameRepeat);
-        printf("Nº rejects: %d\n", stat.numREJ);
-    }
+	if( strcmp("transmitter", argv[1]) == 0){
+		printf("\n\n------------------Statistics Transmitter-----------------\n\n");
+		printf("Number of frames sent (START and END frames included): %d\n", stat.numFrameSend);
+		printf("Number of time-outs: %d\n", stat.numTimeOut);
+		printf("Number of rejects sent: %d\n", stat.numREJSend);
+	}
 
-    return 0;
+	else {
+		printf("\n\n------------------Statistics Receiver-----------------\n\n");
+		printf("Number of frames received (START and END frames included): %d\n", stat.numFrameReceive);
+		printf("Number of frames repeated: %d\n", stat.numFrameRepeat);
+		printf("Number of rejects received: %d\n", stat.numREJReceive);
+	}
+
+	return 0;
 }
