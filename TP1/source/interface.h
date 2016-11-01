@@ -28,7 +28,7 @@ typedef struct {
   char fileName[MAX_LENGTH];    //File name
   int maxLengthTrama;           //Maximum frame length
   int numTransmissions;         //Maximum number of transmissions
-  int timeOut;                  //Time out
+  int timeout;                  //Time out
   int baudrate;                 //Baudrate
 }transmitterInfo;
 
