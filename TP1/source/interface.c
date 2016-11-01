@@ -1,17 +1,32 @@
 #include "interface.h"
 
-receiverInfo receiver;
 transmitterInfo transmitter;
 
-void getInformation() {
+void getInformationTransmitter(){
+	printf("\nChoose the serial port name:\n");
+	printf("0 - /dev/ttyS0\n1 - /dev/ttyS1\n");
+	printf("Answer: ");
 
-	char* file = (char*) malloc(MAX_LENGTH * sizeof(char));
+	int answer;
+	scanf("%d", &answer);
+	fflush(stdin);
+
+	if(answer != 0 && answer!= 1){
+		while( answer != 0 || answer != 1){
+			printf("\nYou have to choose between 0 or 1\n\nChose the serial port name: ");
+			scanf("%d", &answer);
+			fflush(stdin);
+		}
+	}
+
+	transmitter.port = answer;
+
+	char file[MAX_LENGTH];
 	printf("\nWrite the file's name: ");
-	fgets(file, MAX_LENGTH, stdin); //diz que gets é perigoso
+	scanf("%s", file);
+	fflush(stdin);
 
 	strcpy(transmitter.fileName, file);
-
-	printf("%s - %s\n", receiver.fileName, transmitter.fileName);
 
 	int maxLength;
 	printf("\nChoose the maximum length of I frame: ");
@@ -38,10 +53,7 @@ void getInformation() {
 	if(timeout == 0)
 		timeout = DEFAULT_TIMEOUT;
 
-	receiver.timeout = timeout;
 	transmitter.timeout = timeout;
-
-	printf("%d - %d\n", receiver.timeout, transmitter.timeout);
 
 	int numTransmissions;
 	printf("\nChoose the maximum number of transmissions that yoy prefer (0 is the default value - 3 transmissions): ");
@@ -60,11 +72,9 @@ void getInformation() {
 
 	transmitter.numTransmissions = numTransmissions;
 
-	printf("%d\n", transmitter.timeout);
-
 	int baudrate;
 	printf("\nChoose the baudrate that you prefer:\n");
-  	printf("0 - 1200\n1 - 1800\n2 - 2400\n3 - 4800\n4 - 9600\n5 - 38400\n6 - 57600\n7 - 115200\n");
+  	printf("0 - B1200\n1 - B1800\n2 - B2400\n3 - B4800\n4 - B9600\n5 - B38400\n6 - B57600\n7 - B115200\n");
   	printf("\nInsert your choice: ");
   	scanf("%d", &baudrate);
  	fflush(stdin);
@@ -102,29 +112,9 @@ void getInformation() {
 			break;
 	}
 
-	receiver.baudrate = baudrate;
 	transmitter.baudrate = baudrate;
-
-	printf("%d -%d\n", receiver.baudrate, transmitter.baudrate);
-}
-
-receiverInfo getReceiverInfo() {
-  return receiver;
 }
 
 transmitterInfo getTransmitterInfo() {
   return transmitter;
-}
-
-int verifyInfo(){
-	
-	int boolean = 1;
-	if(transmitter.baudrate != receiver.baudrate){
-		printf("Baudrate is not the same\n");
-		boolean = 0;
-	}
-	//ver o que se pode testar mais
-
-	return boolean;
-	
 }

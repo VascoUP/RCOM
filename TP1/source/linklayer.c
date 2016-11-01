@@ -26,7 +26,7 @@ static int handleMessage(unsigned int length, unsigned char msg[], int type_a);
 static int destuffing(unsigned char **buffer, unsigned int length);
 static int stuffing(unsigned char **buffer, unsigned int length);
 
-static int open_serial(int porta, int status);
+static int open_serial(int porta, int status, int baudrate, int timeOut, int numTransmisions);
 static int close_serial(int fd);
 static int write_serial(int fd, unsigned char *msg, unsigned int length);
 static int read_serial(int fd, unsigned char *buf);
@@ -176,9 +176,9 @@ int stuffing(unsigned char **buffer, unsigned int length) {
     return newlength;
 }
 
-int llopen(int porta, int status) {
+int llopen(int porta, int status, int baudrate, int timeOut, int numTransmissions) {
     int fd;
-    if((fd = open_serial(porta, status)) == -1)  {
+    if((fd = open_serial(porta, status, baudrate, timeOut, numTransmissions)) == -1)  {
         printf("Erro open_serial\n");
         return -1; //Retornar logo se der erro
     }
@@ -409,7 +409,7 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     return counter == ll.numTransmissions ? -1 : n; //return # characters written | -1 if error
 }
 
-int open_serial(int porta, int status) {
+int open_serial(int porta, int status, int baudrate, int timeOut, int numTransmissions) {
     int fd;
     struct termios newtio;
 
@@ -418,7 +418,7 @@ int open_serial(int porta, int status) {
         return -1;
     }
 
-    ll.baudrate = BAUDRATE;
+    ll.baudrate = baudrate;
     if (sprintf(ll.port, "/dev/ttyS%d", porta) < 0) {
         printf("Erro ao criar string da porta\n");
         return -1;
@@ -426,8 +426,8 @@ int open_serial(int porta, int status) {
 
     ll.status = status;
     ll.sequenceNumber = status == TRANSMITTER ? 0 : 1;
-    ll.timeOut = 3;
-    ll.numTransmissions = 3;
+    ll.timeOut = timeOut;
+    ll.numTransmissions = numTransmissions;
 
     fd = open(ll.port, O_RDWR | O_NOCTTY);
     if (fd < 0) {

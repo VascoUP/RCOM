@@ -58,7 +58,7 @@ typedef struct {
     unsigned char frame[MAX_LEN];   //image to be sent
 } linklayer;
 
-int llopen(int porta, int status);
+int llopen(int porta, int status, int baudrate, int timeOut, int numTransmissions);
 
 int llclose(int fd);
 

@@ -1,6 +1,8 @@
 
 #include "linklayer.h"
 #include "statistics.h"
+#include "interface.h"
+
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -19,6 +21,8 @@ typedef struct {
 	unsigned int size;
 	unsigned int read_size;
 } fileInfo;
+
+transmitterInfo transmitter;
 
 //Only used by the transmitter
 unsigned char* load_file(char *path, fileInfo *info) {
@@ -305,29 +309,30 @@ int receive_file( applicationLayer app ) {
 int main(int argc, char **argv) {
 
 	applicationLayer app;
-	int port;
-	char file[MAX_LEN];
 
 	if( strcmp("receiver", argv[1])==0 ) {
-		if( argc != 3 ) {
+		if( argc != 2 ) {
 			printf("main:: Falta argumentos\n");
 			return -1;
 		}
 
 		app.status = RECEIVER;
+
 	}
 	else if( strcmp("transmitter", argv[1])==0 ) {
-		if( argc != 4 ) {
+		if( argc != 2 ) {
 			printf("main:: Falta argumentos\n");
 			return -1;
 		}
 
 		app.status = TRANSMITTER;
-		strcpy(file, argv[3]);
+
+		getInformationTransmitter();
+		transmitter = getTransmitterInfo();
 
 		FILE *fp;
-		if( (fp = fopen(file, "r")) == NULL ) {
-			printf("load_file:: Couldnt open %s\n", file);
+		if( (fp = fopen(transmitter.fileName, "r")) == NULL ) {
+			printf("load_file:: Couldnt open %s\n", transmitter.fileName);
 			return -1;
 		}
 
@@ -335,17 +340,8 @@ int main(int argc, char **argv) {
 	}
 	else
 		return -1;
-
-	if( strcmp("/dev/ttyS0", argv[2])==0 )
-		port = 0;
-	else if( strcmp("/dev/ttyS1", argv[2])==0 )
-		port = 1;
-	else {
-		printf("main:: Porta nao existente\n");
-		return -1;
-	}
-
-	app.fileDescriptor = llopen( port, app.status );
+	
+	app.fileDescriptor = llopen( transmitter.port, app.status, transmitter.baudrate, transmitter.timeout, transmitter.numTransmissions);
 	app.sequence_number = 0;
 	if( app.fileDescriptor < 0 ) {
 		printf("main:: Erro ao abrir a porta de série\n");
@@ -353,7 +349,7 @@ int main(int argc, char **argv) {
 	}
 
 	if( app.status == TRANSMITTER ) {
-		send_file(app, file);
+		send_file(app, transmitter.fileName);
 	} else {
 		receive_file(app);
 	}
@@ -370,14 +366,14 @@ int main(int argc, char **argv) {
 
 	statistics stat = getStatistics();
 
-	printf("\n\n------------------Statistics-----------------\n\n");
-
 	if( strcmp("transmitter", argv[1]) == 0){
+		printf("\n\n------------------Statistics Transmitter-----------------\n\n");
 		printf("Nº frames sent (START and END frames included): %d\n", stat.numFrameSend);
 		printf("Nº time-out: %d\n", stat.numTimeOut);
 	}
 
 	else {
+		printf("\n\n------------------Statistics Receiver-----------------\n\n");
 		printf("Nº frames received (START and END frames included): %d\n", stat.numFrameReceive);
 		printf("Nº frames repeated: %d\n", stat.numFrameRepeat);
 		printf("Nº rejects: %d\n", stat.numREJ);

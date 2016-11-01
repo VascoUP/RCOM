@@ -22,11 +22,7 @@
 #define BAUDRATE_115200    	B115200
 
 typedef struct {
-  int timeout;
-  int baudrate;
-}receiverInfo;
-
-typedef struct {
+  int port;
   char fileName[MAX_LENGTH];
   int maxLengthTrama;
   int numTransmissions;
@@ -34,13 +30,9 @@ typedef struct {
   int baudrate;
 }transmitterInfo;
 
-void getInformation();
-
-receiverInfo getReceiverInfo();
+void getInformationTransmitter();
 
 transmitterInfo getTransmitterInfo();
-
-int verifyInfo();
 
 #endif
 
