@@ -400,31 +400,30 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     while(flag && counter < ll.numTransmissions) {
         if( write_serial(fd, buffer, n) == -1 ) return -1;
 
-        //do {
-        alarm(ll.timeOut);
-        flag = 0;
-        
-        if( ( k = read_serial(fd, resp) ) != -1 ) {
-            tr = handleMessage(k, resp, A_T);
-        //} while( flag == 0 && tr != TRAMA_RR && tr != TRAMA_REJ );
+        do {
+            alarm(ll.timeOut);
+            flag = 0;
+            
+            if( ( k = read_serial(fd, resp) ) != -1 )
+                tr = handleMessage(k, resp, A_T);
+        } while( flag == 0 && tr != TRAMA_RR && tr != TRAMA_REJ );
 
-            if( tr == TRAMA_RR ) {
-                ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
-                
-                flag = 1;
-                counter = 0;
+        if( tr == TRAMA_RR ) {
+            ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
+            
+            flag = 1;
+            counter = 0;
 
-                break;
-            } else {
-                if( tr == TRAMA_REJ ) {
-                    printf("llwrite:: Packet rejected\n");
-                    incREJ();
-                }
-
-                alarm(0);
-                counter++;
-                flag = 1;
+            break;
+        } else {
+            if( tr == TRAMA_REJ ) {
+                printf("llwrite:: Packet rejected\n");
+                incREJ();
             }
+
+            alarm(0);
+            counter++;
+            flag = 1;
         }
     }
 
