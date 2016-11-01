@@ -211,37 +211,37 @@ void send_file(applicationLayer app, char *file) {
 
     unsigned char *loaded_file = load_file(file, app.info);
 
-    unsigned char *control = build_control_packet(START_PACKET, app.info->size, file, &length);
-    llwrite( app.fileDescriptor, control, length );
-    free(control);
+    unsigned char *packet = build_control_packet(START_PACKET, app.info->size, file, &length);
+    llwrite( app.fileDescriptor, packet, length );
+    free(packet);
 
     //Send file -> packet_max_size bytes at a time (packet_max_size + 4 total) 
     //Last one might be less than packet_max_size bytes
-    unsigned int index, data_size, sent, i = 1;
-    int packet_size;
-    unsigned char *packet;
+    unsigned int index, data_size;
 
     for( index = 0; index < app.info->size; index += packet_max_size ) {
 
         //Last packet might have to be shorter than the others
-        data_size = (app.info->size - index < packet_max_size) ? app.info->size - index : data_size;
+        data_size = (app.info->size - index < packet_max_size) ? app.info->size - index : packet_max_size;
 
         packet = malloc(data_size * sizeof(unsigned char));
 
         //Copy part of the file to the newly initialized packets
         memcpy(packet, loaded_file + index, data_size);
 
-        if( (packet_size = build_data_packet( app.sequence_number, data_size, &packet)) == -1 ||
-            llwrite( app.fileDescriptor, packet, packet_size ) == -1 ) {
+        if( (length = build_data_packet( app.sequence_number, data_size, &packet)) == -1 ||
+            llwrite( app.fileDescriptor, packet, length ) == -1 ) {
             printf("send_file:: Error building or sending the packet\n");
             free(packet);
             break;
         }
 
         app.info->read_size += data_size;
-        sent = app.info->read_size * 100;
-        sent /= app.info->size;
-        printf("%d - Sent: %d out of %d ( %d%% )\nSequence number: %d\n", i++, app.info->read_size, app.info->size, sent, app.sequence_number);
+
+        printf("%d - Sent: %d out of %d ( %d%% )\n", 
+                app.sequence_number, app.info->read_size, 
+                app.info->size, app.info->read_size * 100 / app.info->size);
+
         app.sequence_number >= 255 ? app.sequence_number = 0 : app.sequence_number++;
 
         free(packet);
@@ -250,9 +250,9 @@ void send_file(applicationLayer app, char *file) {
     if( index < app.info->size )
         printf("Trying to send end packet\n");
 
-    control = build_control_packet(END_PACKET, app.info->size, file, &length);
-    llwrite( app.fileDescriptor, control, length );
-    free(control);
+    packet = build_control_packet(END_PACKET, app.info->size, file, &length);
+    llwrite( app.fileDescriptor, packet, length );
+    free(packet);
 
     free(loaded_file);
 }

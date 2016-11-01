@@ -31,7 +31,6 @@ void atende() {
     else
         printf("Connecting\n");
     incTimeOut();
-    counter++;
     flag = 1;
 }
 
