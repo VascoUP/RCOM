@@ -35,18 +35,20 @@ static unsigned char* build_frame_us(char address, int sequence_number, int type
 static int build_frame_i(char address, int sequence_number, unsigned char **data, unsigned int length);
 
 void atende() {
-    printf("Resending\n");
+    if( ++counter == ll.numTransmissions )
+        printf("Disconneted\n");
+    else
+        printf("Resending\n");
     incTimeOut();
     counter++;
     flag = 1;
 }
 
-// !!NOT FINISHED!!
 int handleMessage(unsigned int length, unsigned char msg[], int type_a) {
 int i, type = UNDEFINED;
 unsigned char dataBcc = 0;
 
-unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
+unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0;
     for( i = 0; i < length; i++ ) {
         //Flag - 1
         if( f1 == 0 ) {
@@ -99,11 +101,11 @@ unsigned char f1 = 0, a = 0, c = 0, bcc1 = 0, bcc2 = 0;
               }
         //Flag - 2 (tem de vir antes do campo de protecao
         //              MENOS quando se trata de uma trama I)
-        } else if( /*bcc2 != 0 && */ msg[i] == BYTE_FLAG /*&& msg[i-1] == bcc2*/ && type == TRAMA_I ) {
+        } else if( msg[i] == BYTE_FLAG && type == TRAMA_I ) {
             if( msg[i-1] == dataBcc ) {
                 return type;
             }
-        } else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc1 && bcc2 == 0 ) {
+        } else if( msg[i] == BYTE_FLAG && msg[i-1] == bcc1 ) {
             if( type != TRAMA_I )
                 return type;
             else {
@@ -203,10 +205,15 @@ int llopen(int porta, int status, int baudrate, int timeOut, int numTransmission
 
         while(flag && counter < ll.numTransmissions) {
             if( write_serial(fd, set, FRAMA_US_LEN) == -1 ) return -1;
+            
             alarm(ll.timeOut);
             flag = 0;
+
             if( ( k = read_serial(fd, buffer) ) != -1 ) {
-                if( handleMessage(k, buffer, A_T) == TRAMA_UA ) {
+                if( handleMessage(k, buffer, A_T) == TRAMA_UA ) {                    
+                    flag = 1;
+                    counter = 0;
+
                     break;
                 } else {
                     alarm(0);
@@ -223,7 +230,7 @@ int llopen(int porta, int status, int baudrate, int timeOut, int numTransmission
         flag = 1;
         counter = 0;
 
-	      free(set);
+	    free(set);
     } else {
         do {
             k = read_serial(fd, buffer);
@@ -261,6 +268,7 @@ int llclose(int fd) {
 
             alarm(ll.timeOut);
             flag = 0;
+
             if( ( k = read_serial(fd, buffer) ) != -1 ) {
                 if( handleMessage(k, buffer, A_T) == TRAMA_DISC ) {
                     flag = 1;
@@ -273,14 +281,24 @@ int llclose(int fd) {
                     flag = 1;
                 }
             }
+        }        
+        
+        if (counter == ll.numTransmissions) {
+            printf("Maximum number of transmissions\n");
+            return -1;
         }
 
         do {
-          if( write_serial(fd, ua, FRAMA_US_LEN) == 0 ) {
-            break;
-          }
-          counter++;
-       } while(counter < ll.numTransmissions && k > 0);
+            if( write_serial(fd, ua, FRAMA_US_LEN) == 0 ) {
+                break;
+            }
+            counter++;
+        } while(counter < ll.numTransmissions && k > 0);
+
+        if (counter == ll.numTransmissions) {
+            printf("Maximum number of transmissions\n");
+            return -1;
+        }
 
     } else {
         do {
@@ -382,25 +400,31 @@ int llwrite(int fd, unsigned char *buffer, unsigned int length) {
     while(flag && counter < ll.numTransmissions) {
         if( write_serial(fd, buffer, n) == -1 ) return -1;
 
-        do {
-            alarm(ll.timeOut);
-            flag = 0;
-            if( ( k = read_serial(fd, resp) ) != -1 )
-                tr = handleMessage(k, resp, A_T);
-        } while( flag == 0 && tr != TRAMA_RR && tr != TRAMA_REJ );
+        //do {
+        alarm(ll.timeOut);
+        flag = 0;
+        
+        if( ( k = read_serial(fd, resp) ) != -1 ) {
+            tr = handleMessage(k, resp, A_T);
+        //} while( flag == 0 && tr != TRAMA_RR && tr != TRAMA_REJ );
 
-        if( tr == TRAMA_RR ) {
-            ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
-            flag = 1;
-            counter = 0;
+            if( tr == TRAMA_RR ) {
+                ll.sequenceNumber = ll.sequenceNumber == 0 ? 1 : 0;
+                
+                flag = 1;
+                counter = 0;
 
-            break;
-        } else if( tr == TRAMA_REJ ) {
-            printf("llwrite:: Packet rejected\n");
-	    incREJ();
-            alarm(0);
-            counter++;
-            flag = 1;
+                break;
+            } else {
+                if( tr == TRAMA_REJ ) {
+                    printf("llwrite:: Packet rejected\n");
+                    incREJ();
+                }
+
+                alarm(0);
+                counter++;
+                flag = 1;
+            }
         }
     }
 
@@ -502,7 +526,6 @@ int read_serial(int fd, unsigned char *buf) {
         nfr += n;
 
         if( !hasFirst ) {
-            //int k;
             for( k = 0; k < nfr; k++ ) {
                 if( buf[k] == BYTE_FLAG ) {
                     break;
@@ -522,7 +545,7 @@ int read_serial(int fd, unsigned char *buf) {
         }
 
         if(hasFirst && nfr > 1) {
-            for( k = 1; k < nfr; k++ ) {
+            for( k = nfr - n + 1; k < nfr; k++ ) {
                 if( buf[k] == BYTE_FLAG )
                     break;
             }
