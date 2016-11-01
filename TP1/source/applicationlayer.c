@@ -10,17 +10,19 @@
 #include <fcntl.h>
 
 typedef struct {
-	int fileDescriptor;
-	unsigned int sequence_number;
-	int status;         //TRANSMITTER | RECEIVER
-} applicationLayer;
-
-typedef struct {
 	int fd;
 	char *file_name;
 	unsigned int size;
 	unsigned int read_size;
 } fileInfo;
+
+typedef struct {
+	int fileDescriptor;
+	unsigned int sequence_number;
+	int status;         //TRANSMITTER | RECEIVER
+	fileInfo *info;
+} applicationLayer;
+
 
 transmitterInfo transmitter;
 
@@ -34,6 +36,7 @@ unsigned char* load_file(char *path, fileInfo *info) {
 	}
 
 	fseek(fp, 0, SEEK_END);
+	
 	info->size = ftell(fp);
 	info->read_size = 0;
 	rewind(fp);
@@ -178,23 +181,22 @@ void send_file(applicationLayer app, char *file) {
 
 	int length;
 
-	fileInfo info;
+	unsigned char *loaded_file = load_file(file, app.info);
 
-	unsigned char *loaded_file = load_file(file, &info);
-
-	unsigned char *control = build_control_packet(START_PACKET, info.size, file, &length);
+	unsigned char *control = build_control_packet(START_PACKET, app.info->size, file, &length);
 	llwrite( app.fileDescriptor, control, length );
 	free(control);
 
-	//Send file -> 124 bytes at a time (128 total)
+	//Send file -> 124 bytes at a time (128 total) 
+	//Last one might be less than 124 bytes
 	unsigned int index, data_size, sent, i = 1;
 	int packet_size;
 	unsigned char *packet;
 
-	for( index = 0; index < info.size; index += 124 ) {
+	for( index = 0; index < app.info->size; index += 124 ) {
 
 		//Last packet might have to be shorter than the others
-		data_size = (info.size - index < 124) ? info.size - index : 124;
+		data_size = (app.info->size - index < 124) ? app.info->size - index : 124;
 
 		packet = malloc(data_size * sizeof(unsigned char));
 
@@ -208,58 +210,49 @@ void send_file(applicationLayer app, char *file) {
 			break;
 		}
 
-		info.read_size += data_size;
-		sent = info.read_size * 100;
-		sent /= info.size;
-		printf("%d - Sent: %d out of %d ( %d%% )\nSequence number: %d\n", i++, info.read_size, info.size, sent, app.sequence_number);
+		app.info->read_size += data_size;
+		sent = app.info->read_size * 100;
+		sent /= app.info->size;
+		printf("%d - Sent: %d out of %d ( %d%% )\nSequence number: %d\n", i++, app.info->read_size, app.info->size, sent, app.sequence_number);
 		app.sequence_number >= 255 ? app.sequence_number = 0 : app.sequence_number++;
 
 		free(packet);
 	}
 
-	if( index < info.size )
+	if( index < app.info->size )
 		printf("Trying to send end packet\n");
 
-	control = build_control_packet(END_PACKET, info.size, file, &length);
+	control = build_control_packet(END_PACKET, app.info->size, file, &length);
 	llwrite( app.fileDescriptor, control, length );
 	free(control);
 
 	free(loaded_file);
 }
 
-int handler_read( unsigned char* data, int length, fileInfo *info, unsigned int start, unsigned int *sequence_number ) {
-
-	if( (unsigned int) data[0] == DATA_PACKET ) {
-		if( !start ) {
-			printf("handler_read:: Havent received start packet\n");
-			return -1;
+int handler_read( unsigned char* data, int length, applicationLayer* app ) {
+	unsigned int type = (unsigned int) data[0];
+	if( type == DATA_PACKET ) {
+		int length = unpack_data_packet(&data, app->sequence_number);
+		if( length != -1 ) {
+			(app->sequence_number)++;
+			app->info->read_size += length;
+			write_file(app->info->fd, data, length);
 		}
 
-	int length = unpack_data_packet(&data, *sequence_number);
-	if( length != -1 ) {
-		(*sequence_number)++;
-		info->read_size += length;
-		write_file(info->fd, data, length);
-	}
-
-	return DATA_PACKET;       //Informa funcao receive_file que recebeu uma data packet
-	} else if( (unsigned int) data[0] == START_PACKET ) {
-		if( start ) {
-			printf("handler_read:: Already received start packet\n");
-			return -1;
-		}
+		return DATA_PACKET;       //Informa funcao receive_file que recebeu uma data packet
+	} else if( type == START_PACKET ) {
 		//Se nao tiver recebido todas as informacoes necessarias
-		return unpack_control_packet( data, length, info ) == -1 ? -1 : START_PACKET;
-	} else if( (unsigned int) data[0] == END_PACKET ) {
+		return unpack_control_packet( data, length, app->info ) == -1 ? -1 : START_PACKET;
+	} else if( type == END_PACKET ) {
 
 		fileInfo info2;
 		//Se nao tiver recebido todas as informacoes necessarias
 		return ( unpack_control_packet( data, length, &info2 ) == -1 ||
 			//Se alguma das informacoes estiver errada
-			strcmp(info2.file_name, info->file_name) != 0 ||
-			info2.size != info->size ||
+			strcmp(info2.file_name, app->info->file_name) != 0 ||
+			info2.size != app->info->size ||
 			//Ainda nao leu o start packet
-			info->file_name == NULL ) ?
+			app->info->file_name == NULL ) ?
 			-1 : END_PACKET;
 	}
 
@@ -269,39 +262,37 @@ int handler_read( unsigned char* data, int length, fileInfo *info, unsigned int 
 
 int receive_file( applicationLayer app ) {
 	unsigned char *buffer = NULL;
-	unsigned int start = 0;     //0 - hasnt received start packet; 1 - it has already received the start packet
 	int length, type;
-	fileInfo info;
-	info.file_name = NULL;
-	info.read_size = 0;
+	
+	app.info->file_name = NULL;
+	app.info->read_size = 0;
 	int i = 1;
 
 	while( 1 ) { //Keeps reading until it receives an end packet
 
 		if( (length = llread( app.fileDescriptor, &buffer )) == -1 )
 			continue;
-		type = handler_read(buffer, length, &info, start, &(app.sequence_number));
+		type = handler_read(buffer, length, &app);
 		if( type == DATA_PACKET ) {
-			printf("%d - Received %d out of %d ( %d%% )\nSequence number: %d\n", i++, info.read_size, info.size,
-										info.read_size * 100 / info.size, app.sequence_number );
+			printf("%d - Received %d out of %d ( %d%% )\nSequence number: %d\n", i++, app.info->read_size, app.info->size,
+										app.info->read_size * 100 / app.info->size, app.sequence_number );
 		} else if( type == START_PACKET ) {
-			start = 1;
 			printf("receive_file:: Start packet\n");
-			if( (info.fd = open_file( info.file_name )) == -1 ) {
-				printf("receive_file:: Unable to open the file %s\n", info.file_name);
+			if( (app.info->fd = open_file( app.info->file_name )) == -1 ) {
+				printf("receive_file:: Unable to open the file %s\n", app.info->file_name);
 				break;
 			}
 		} else if( type == END_PACKET ) {
 			printf("receive_file:: End packet\n");
-			close_file( info.fd, info.file_name );
+			close_file( app.info->fd, app.info->file_name );
 			break;
 		} else
 		printf("receive_file:: Error\n");
 
 	}
 
-	if(info.file_name != NULL)
-	free(info.file_name);
+	if(app.info->file_name != NULL)
+	free(app.info->file_name);
 
 	return 0;
 }
@@ -341,6 +332,7 @@ int main(int argc, char **argv) {
 	else
 		return -1;
 	
+	app.info = (fileInfo *) malloc( sizeof(fileInfo));
 	app.fileDescriptor = llopen( transmitter.port, app.status, transmitter.baudrate, transmitter.timeout, transmitter.numTransmissions);
 	app.sequence_number = 0;
 	if( app.fileDescriptor < 0 ) {
