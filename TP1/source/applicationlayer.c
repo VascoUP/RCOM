@@ -16,7 +16,7 @@ typedef struct {
     char *file_name;            //file name
     unsigned int size;          //file size
     unsigned int read_size;     //read size
-    mode_t permission;	//permissions
+    mode_t permission;			//permissions
     time_t m_time;				//date
 } fileInfo;
 
@@ -26,7 +26,7 @@ typedef struct {
     fileInfo *info;                 //file information
 } applicationLayer;
 
-static int fileDescriptor = -1;             //file descriptor
+static int fileDescriptor = -1;     //file descriptor
 
 //^C handler
 void intHandler( ) {
@@ -92,7 +92,7 @@ void close_file( int fd, char* path , mode_t permission, time_t m_time) {
     struct utimbuf new_time;
     new_time.modtime = m_time;
     utime(path, &new_time);
-    chmod(path, /*S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH*/ permission);
+    chmod(path, permission);
 }
 
 int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *info ) {
@@ -330,6 +330,8 @@ int handler_read( unsigned char* data, int length, applicationLayer* app ) {
             //If any information is wrong
             strcmp(info2.file_name, app->info->file_name) != 0 ||
             info2.size != app->info->size ||
+			info2.permission != app->info->permission ||
+			info2.m_time != app->info->m_time ||
             //It didn't read the start packet already
             app->info->file_name == NULL ) ? -1 : END_PACKET;
     }
