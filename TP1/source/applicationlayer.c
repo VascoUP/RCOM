@@ -157,7 +157,6 @@ unsigned char* build_control_packet( unsigned int control, int file_size, char *
     	x >>= 8;
     	fs_length++;
     }
-    printf("fs_length=%d\n", fs_length);
 
     packet[0] = control;
     packet[1] = 0;
@@ -223,6 +222,10 @@ void send_file(applicationLayer app, char *file) {
     int length;
 
     unsigned char *loaded_file = load_file(file, app.info);
+    if (loaded_file == NULL) {
+    	printf("File does not exist\n");
+    	return;
+    }
 
     unsigned char *control = build_control_packet(START_PACKET, app.info->size, file, &length);
     llwrite( app.fileDescriptor, control, length );
@@ -432,15 +435,18 @@ int main(int argc, char **argv) {
 		receive_file(app);
 	}
 
-	int count = 0;
-	do {
-		if( llclose(app.fileDescriptor) == 0 )
-			break;
-		count++;
-	} while( count < 3 );
-
-	if( count == 3 )
-		return -1;
+	//int count = 0;
+	//do {
+	//	if( llclose(app.fileDescriptor) == 0 )
+	//		break;
+	//	count++;
+	//} while( count < 3 );
+	
+	// check error
+	llclose(app.fileDescriptor);
+	if (app.status == TRANSMITTER) {
+		sleep(1);
+	}
 
 	statistics stat = getStatistics();
 

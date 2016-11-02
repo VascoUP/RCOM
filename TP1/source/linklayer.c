@@ -31,7 +31,6 @@ void atende() {
     else
         printf("Resending\n");
     incTimeOut();
-    counter++;
     flag = 1;
 }
 
@@ -209,15 +208,14 @@ int llopen(int porta, int status, int baudrate, int timeOut, int numTransmission
                 }
             }
         }
-        if (counter == ll.numTransmissions) {
+        if (counter >= ll.numTransmissions) {
             printf("Maximum number of transmissions\n");
             return -1;
         }
 
         flag = 1;
         counter = 0;
-
-	      free(set);
+		free(set);
     } else {
         do {
             k = read_serial(fd, buffer);
@@ -228,10 +226,8 @@ int llopen(int porta, int status, int baudrate, int timeOut, int numTransmission
         } while( handleMessage(k, buffer, A_T) != TRAMA_SET );
 
         unsigned char *ua = build_frame_us(BYTE_AT, ll.sequenceNumber, TRAMA_UA);
-
         write_serial(fd, ua, FRAMA_US_LEN);
-
-	      free(ua);
+	    free(ua);
     }
 
     return fd;
