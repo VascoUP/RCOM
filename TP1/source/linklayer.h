@@ -9,6 +9,7 @@
 #include <signal.h>
 
 #include "statistics.h"
+#include "interface.h"
 
 #define BIT(n)      0x01 << n
 
@@ -64,7 +65,7 @@ typedef struct {
     unsigned char frame[MAX_LEN];   //image to be sent
 } linklayer;
 
-int llopen(int porta, int status, int baudrate, int timeOut, int numTransmissions);
+int llopen( int status );
 
 int llclose(int fd);
 

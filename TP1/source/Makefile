@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall
+CFLAGS=-Wall -g
 
 app: applicationlayer.o linklayer.o statistics.o interface.o
 	$(CC) -o app applicationlayer.o linklayer.o statistics.o interface.o $(CFLAGS)

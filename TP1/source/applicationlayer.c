@@ -8,23 +8,33 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <utime.h>
+#include <time.h>
 
 typedef struct {
     int fd;                     //file descriptor
     char *file_name;            //file name
     unsigned int size;          //file size
     unsigned int read_size;     //read size
+    mode_t permission;	//permissions
+    time_t m_time;				//date
 } fileInfo;
 
 typedef struct {
-    int fileDescriptor;             //file descriptor
     unsigned int sequence_number;   //sequence number
     int status;                     //TRANSMITTER | RECEIVER
     fileInfo *info;                 //file information
 } applicationLayer;
 
+static int fileDescriptor = -1;             //file descriptor
 
-transmitterInfo transmitter;
+//^C handler
+void intHandler( ) {
+    printf("\n\n----------\nCancelling\n----------\n\n");
+    if( fileDescriptor != -1)
+    	llclose(fileDescriptor);
+    exit(0);
+}
 
 //Only used by the transmitter
 unsigned char* load_file(char *path, fileInfo *info) {
@@ -36,7 +46,7 @@ unsigned char* load_file(char *path, fileInfo *info) {
     }
 
     fseek(fp, 0, SEEK_END);
-    
+
     info->size = ftell(fp);
     info->read_size = 0;
     rewind(fp);
@@ -46,44 +56,29 @@ unsigned char* load_file(char *path, fileInfo *info) {
 
     fclose(fp);
 
-    return data;
-}
-
-// ----------------------------------------------------------------------------
-
-int open_file2(char *path, int status) {
-    int fd = -1;
-    if (status == RECEIVER) {
-        int remove = unlink(path);
-        if (remove != 0) {
-            printf("open_file:: Error removing the file %s\n", path);
-        }
-        fd = open(path, O_WRONLY | O_CREAT | O_APPEND);
-    }
-    else {
-        fd = open(path, O_RDONLY);
-    }
-    return fd;
-}
-
-int load_file_info(int fd, fileInfo* info) {
+    //permissions and date
+    int fd = open(path, O_RDONLY);
     struct stat filestat;
     if (fstat(fd, &filestat) < 0) {
         printf("load_file_info:: Failed to retrieve file info\n");
-        return -1;
     }
-    info->size = filestat.st_size;
-    return 0;
+    info->permission = filestat.st_mode;
+    info->m_time = filestat.st_mtime;
+    close(fd);
+
+    return data;
 }
 
-// ----------------------------------------------------------------------------
-
-int open_file( char* path ) {
-    int status = unlink(path);
+int open_file( char* path , int role) {
+	int fd;
+	if(role == RECEIVER){
+		int status = unlink(path);
     if( status != 0 )
         printf("Error removing the file %s\n", path);
+        fd = open(path, O_WRONLY | O_CREAT | O_APPEND);
+    } else
+        fd = open(path, O_RDONLY);
 
-    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND);
     return fd;
 }
 
@@ -92,9 +87,12 @@ int write_file( int fd, unsigned char* data, int length ) {
     return n;
 }
 
-void close_file( int fd, char* path ) {
-        close(fd);
-    chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+void close_file( int fd, char* path , mode_t permission, time_t m_time) {
+    close(fd);
+    struct utimbuf new_time;
+    new_time.modtime = m_time;
+    utime(path, &new_time);
+    chmod(path, /*S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH*/ permission);
 }
 
 int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *info ) {
@@ -104,6 +102,7 @@ int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *i
     int size, i;
     unsigned char verify = 0;
     info->size = 0;
+    info->permission = 0;
 
     while(t_index < length) {
         size = data[l_index];
@@ -119,11 +118,26 @@ int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *i
             info->file_name = malloc( (size+1) * sizeof(char) );
 
             memset(info->file_name, 0, size+1);
-            memcpy(info->file_name, (char *) (data + v_index) , size);
+            memcpy(info->file_name, data + v_index , size);
 
             verify |= BIT(1);
 
             break;
+
+        case 2:
+        	for( i = 0; i < size; i++ )
+                info->permission = (info->permission << 8) + (int) data[v_index + i];
+
+            verify |= BIT(2);
+            break;
+
+        case 3:
+        	for( i = 0; i < size; i++ )
+                info->m_time = (info->m_time << 8) + (int) data[v_index + i];
+
+            verify |= BIT(3);
+            break;
+
         default:
             return -1;
         }
@@ -134,42 +148,69 @@ int unpack_control_packet( unsigned char *data, unsigned int length, fileInfo *i
 
     }
 
-    if( verify == 0x3 )
-    return 0;
+    if( verify == 0xF )
+    	return 0;
 
     printf("unpack_control_packet:: Unpacking was unsuccessfull\n");
     return -1;
 }
 
-unsigned char* build_control_packet( unsigned int control, int file_size, char *file_name, int *length ) {
+unsigned char* build_control_packet( unsigned int control, unsigned int file_size, char *file_name, int *length, mode_t permissions, time_t m_time ) {
     const int fn_length = strlen(file_name);
-    *length = 7 + fn_length;
+
+    int fs_length = 0;
+    unsigned int x = file_size;
+    while (x != 0) {
+    	x >>= 8;
+    	fs_length++;
+    }
+
+    int p_length = 0;
+    x= permissions;
+    while (x != 0) {
+    	x >>= 8;
+    	p_length++;
+    }
+
+    int time_length = 0;
+    x = m_time;
+    while (x != 0) {
+    	x >>= 8;
+    	time_length++;
+    }
+
+    *length = 5 + fs_length + fn_length + 2 + p_length + 2 +  time_length;
 
     unsigned char *packet = malloc(*length * sizeof(unsigned char));
     if( packet == NULL ) {
         printf("build_control_packet:: Error allocating memory\n");
         return NULL;
     }
-    
-    int fs_length = 0;
-    int x = file_size;
-    while (x != 0) {
-    	x >>= 8;
-    	fs_length++;
-    }
 
     packet[0] = control;
     packet[1] = 0;
     packet[2] = fs_length;
-    
+
     int i;
     for (i = 0; i < fs_length; i++) {
     	packet[3+fs_length-1-i] = file_size >> (i*8);
-    } 
-    
+    }
+
     packet[3+fs_length] = 1;
     packet[3+fs_length+1] = fn_length;
-    memcpy(packet + 3+fs_length+2, file_name, fn_length);
+    memcpy(packet + 3 + fs_length + 2, file_name, fn_length);
+
+    packet[3+fs_length+2+fn_length] = 2;
+    packet[3+fs_length+2+fn_length+1] = p_length;
+    for (i = 0; i < p_length; i++) {
+    	packet[3 + fs_length + 2 + fn_length + 2 + p_length-1-i] = permissions >> (i*8);
+    }
+
+    packet[3 + fs_length + 2 + fn_length + 2 + p_length] = 3;
+    packet[3 + fs_length + 2 + fn_length + 2 + p_length + 1 ] = time_length;
+    for (i = 0; i < time_length; i++) {
+    	packet[3 + fs_length + 2 + fn_length + 2 + p_length + 2 + time_length-1-i] = m_time >> (i*8);
+    }
 
     return packet;
 }
@@ -181,9 +222,10 @@ int unpack_data_packet( unsigned char** data, unsigned int sequence_number ) {
         return -1;
     }
     int sq_num = (int) (*data)[1];
-    if( (int)sequence_number - 1 == sq_num ) {
+    if( (int)sequence_number == sq_num + 1 || (sequence_number == 0 && sq_num == 255) ) {
         //Duplicated
         printf("unpack_data_packet:: Duplicated packet\n");
+        incFrameRepeat();
         return -1;
     }
 
@@ -218,8 +260,8 @@ int build_data_packet( unsigned int sequenceNumber, unsigned int nBytes, unsigne
 }
 
 void send_file(applicationLayer app, char *file) {
-
-    int length;
+    const int packet_max_size = ( info.maxLengthTrama - 7 ) / 2;
+    int packet_size;
 
     unsigned char *loaded_file = load_file(file, app.info);
     if (loaded_file == NULL) {
@@ -227,20 +269,17 @@ void send_file(applicationLayer app, char *file) {
     	return;
     }
 
-    unsigned char *control = build_control_packet(START_PACKET, app.info->size, file, &length);
-    llwrite( app.fileDescriptor, control, length );
-    free(control);
+    unsigned char *packet = build_control_packet(START_PACKET, app.info->size, file, &packet_size, app.info->permission, app.info->m_time);
+    llwrite( fileDescriptor, packet, packet_size );
 
-    //Send file -> 124 bytes at a time (128 total) 
+    //Send file -> 124 bytes at a time (128 total)
     //Last one might be less than 124 bytes
-    unsigned int index, data_size, sent, i = 1;
-    int packet_size;
-    unsigned char *packet;
+    unsigned int index, data_size;
 
-    for( index = 0; index < app.info->size; index += 124 ) {
+    for( index = 0; index < app.info->size; index += packet_max_size ) {
 
         //Last packet might have to be shorter than the others
-        data_size = (app.info->size - index < 124) ? app.info->size - index : 124;
+        data_size = (app.info->size - index < packet_max_size) ? app.info->size - index : packet_max_size;
 
         packet = malloc(data_size * sizeof(unsigned char));
 
@@ -248,84 +287,33 @@ void send_file(applicationLayer app, char *file) {
         memcpy(packet, loaded_file + index, data_size);
 
         if( (packet_size = build_data_packet( app.sequence_number, data_size, &packet)) == -1 ||
-            llwrite( app.fileDescriptor, packet, packet_size ) == -1 ) {
+            llwrite( fileDescriptor, packet, packet_size ) == -1 ) {
             printf("send_file:: Error building or sending the packet\n");
-            free(packet);
             break;
         }
 
         app.info->read_size += data_size;
-        sent = app.info->read_size * 100;
-        sent /= app.info->size;
-        printf("%d - Sent: %d out of %d ( %d%% )\nSequence number: %d\n", i++, app.info->read_size, app.info->size, sent, app.sequence_number);
+        printf("Sent: %d out of %d ( %d%% )\n",
+                app.info->read_size, app.info->size, app.info->read_size * 100 / app.info->size);
         app.sequence_number >= 255 ? app.sequence_number = 0 : app.sequence_number++;
 
-        free(packet);
     }
 
     if( index < app.info->size )
         printf("Trying to send end packet\n");
 
-    control = build_control_packet(END_PACKET, app.info->size, file, &length);
-    llwrite( app.fileDescriptor, control, length );
-    free(control);
+    packet = build_control_packet(END_PACKET, app.info->size, file, &packet_size, app.info->permission, app.info->m_time);
+    llwrite( fileDescriptor, packet, packet_size );
 
     free(loaded_file);
 }
-
-// ----------------------------------------------------------------------------
-
-void send_file2(applicationLayer app, char *path) {
-    int fd, size;
-    fd = open_file2(path, TRANSMITTER);
-    load_file_info(fd, app.info);
-
-    unsigned char *control = build_control_packet(START_PACKET, app.info->size, path, &size);
-    llwrite(app.fileDescriptor, control, size);
-    free(control);
-
-    unsigned int sent = 0;
-    while (sent < app.info->size) {
-        int n = 0, packet_size;
-        unsigned char data;
-        
-        n = read(fd, &data, 124);
-        if (n == -1) {
-            printf("send_file2:: Error reading file\n");
-        }
-
-        unsigned char *packet = malloc(n * sizeof(char));
-        memcpy(packet, &data, n);
-
-        packet_size = build_data_packet(app.sequence_number, n, &packet);
-        if (packet_size == -1) {
-            printf("send_file2:: Error building data packet\n");
-            break;
-        }
-
-        if (llwrite(app.fileDescriptor, packet, packet_size) == -1) {
-            printf("send_file2:: Error writing data packet\n");
-        }
-
-        sent += n;
-        app.sequence_number >= 255 ? app.sequence_number = 0 : app.sequence_number++;
-
-        free(packet);
-    }
-
-    control = build_control_packet(END_PACKET, app.info->size, path, &size);
-    llwrite(app.fileDescriptor, control, size);
-    free(control);
-}
-
-// ----------------------------------------------------------------------------
 
 int handler_read( unsigned char* data, int length, applicationLayer* app ) {
     unsigned int type = (unsigned int) data[0];
     if( type == DATA_PACKET ) {
         int length = unpack_data_packet(&data, app->sequence_number);
         if( length != -1 ) {
-            (app->sequence_number)++;
+            app->sequence_number >= 255 ? app->sequence_number = 0 : app->sequence_number++;
             app->info->read_size += length;
             write_file(app->info->fd, data, length);
         }
@@ -353,28 +341,28 @@ int handler_read( unsigned char* data, int length, applicationLayer* app ) {
 int receive_file( applicationLayer app ) {
     unsigned char *buffer = NULL;
     int length, type;
-    
+
     app.info->file_name = NULL;
     app.info->read_size = 0;
-    int i = 1;
 
     while( 1 ) { //Keeps reading until it receives an end packet
 
-        if( (length = llread( app.fileDescriptor, &buffer )) == -1 )
+        if( (length = llread( fileDescriptor, &buffer )) == -1 )
             continue;
         type = handler_read(buffer, length, &app);
         if( type == DATA_PACKET ) {
-            printf("%d - Received %d out of %d ( %d%% )\nSequence number: %d\n", i++, app.info->read_size, app.info->size,
-                                        app.info->read_size * 100 / app.info->size, app.sequence_number );
+            printf("Received %d out of %d ( %d%% )\n",
+                    app.info->read_size, app.info->size,
+                    app.info->read_size * 100 / app.info->size );
         } else if( type == START_PACKET ) {
             printf("receive_file:: Start packet\n");
-            if( (app.info->fd = open_file( app.info->file_name )) == -1 ) {
+            if( (app.info->fd = open_file( app.info->file_name , app.status)) == -1 ) {
                 printf("receive_file:: Unable to open the file %s\n", app.info->file_name);
                 break;
             }
         } else if( type == END_PACKET ) {
             printf("receive_file:: End packet\n");
-            close_file( app.info->fd, app.info->file_name );
+            close_file( app.info->fd, app.info->file_name, app.info->permission, app.info->m_time );
             break;
         } else
         printf("receive_file:: Error\n");
@@ -389,80 +377,70 @@ int receive_file( applicationLayer app ) {
 
 int main(int argc, char **argv) {
 
-	applicationLayer app;
+  	applicationLayer app;
 
-	if( strcmp("receiver", argv[1])==0 ) {
-		if( argc != 2 ) {
-			printf("main:: Some arguments are missing\n");
-			return -1;
-		}
+    if( argc != 2 ) {
+      printf("main:: Some arguments are missing\n");
+      return -1;
+    }
 
-		app.status = RECEIVER;
+  	if( strcmp("receiver", argv[1])==0 ) {
+  		app.status = RECEIVER;
+      getInformationInterface(argv[1]);
+  	}
+  	else if( strcmp("transmitter", argv[1])==0 ) {
+  		app.status = TRANSMITTER;
+  		getInformationInterface(argv[1]);
 
-	}
-	else if( strcmp("transmitter", argv[1])==0 ) {
-		if( argc != 2 ) {
-			printf("main:: Some arguments are missing\n");
-			return -1;
-		}
+  		FILE *fp;
+  		if( (fp = fopen(info.fileName, "r")) == NULL ) {
+  			printf("load_file:: Couldnt open %s\n", info.fileName);
+  			return -1;
+  		}
 
-		app.status = TRANSMITTER;
+  		fclose(fp);
+  	}
+  	else
+  		return -1;
 
-		getInformationTransmitter();
+	srand(time(NULL));
+    signal(SIGINT, intHandler);
 
-		FILE *fp;
-		if( (fp = fopen(transmitter.fileName, "r")) == NULL ) {
-			printf("load_file:: Couldnt open %s\n", transmitter.fileName);
-			return -1;
-		}
+  	app.info = (fileInfo *) malloc( sizeof(fileInfo));
+  	fileDescriptor = llopen( app.status );
+  	app.sequence_number = 0;
+  	if( fileDescriptor < 0 ) {
+  		printf("main:: Error opening the serial port\n");
+  		return -1;
+  	}
 
-		fclose(fp);
-	}
-	else
-		return -1;
-	
-	app.info = (fileInfo *) malloc( sizeof(fileInfo));
-	app.fileDescriptor = llopen( transmitter.port, app.status, transmitter.baudrate, transmitter.timeout, transmitter.numTransmissions);
-	app.sequence_number = 0;
-	if( app.fileDescriptor < 0 ) {
-		printf("main:: Error opening the serial port\n");
-		return -1;
-	}
+  	if( app.status == TRANSMITTER ) {
+  		send_file(app, info.fileName);
+  	} else {
+  		receive_file(app);
+  	}
 
-	if( app.status == TRANSMITTER ) {
-		send_file(app, transmitter.fileName);
-	} else {
-		receive_file(app);
-	}
+  	llclose(fileDescriptor);
+  	if (app.status == TRANSMITTER) {
+  		sleep(1);
+  	}
 
-	//int count = 0;
-	//do {
-	//	if( llclose(app.fileDescriptor) == 0 )
-	//		break;
-	//	count++;
-	//} while( count < 3 );
-	
-	// check error
-	llclose(app.fileDescriptor);
-	if (app.status == TRANSMITTER) {
-		sleep(1);
-	}
+	free(app.info);
+  	statistics stat = getStatistics();
 
-	statistics stat = getStatistics();
+  	if( strcmp("transmitter", argv[1]) == 0){
+  		printf("\n\n------------------Statistics Transmitter-----------------\n\n");
+  		printf("Number of frames sent (START and END frames included): %d\n", stat.numFrameSend);
+  		printf("Number of time-outs: %d\n", stat.numTimeOut);
+  		printf("Number of rejects received: %d\n", stat.numREJReceive);
+  	}
 
-	if( strcmp("transmitter", argv[1]) == 0){
-		printf("\n\n------------------Statistics Transmitter-----------------\n\n");
-		printf("Number of frames sent (START and END frames included): %d\n", stat.numFrameSend);
-		printf("Number of time-outs: %d\n", stat.numTimeOut);
-		printf("Number of rejects sent: %d\n", stat.numREJSend);
-	}
+  	else {
+  		printf("\n\n------------------Statistics Receiver-----------------\n\n");
+  		printf("Number of frames received (START and END frames included): %d\n", stat.numFrameReceive);
+  		printf("Number of frames repeated: %d\n", stat.numFrameRepeat);
+  		printf("Number of rejects sent: %d\n", stat.numREJSend);
+  	}
 
-	else {
-		printf("\n\n------------------Statistics Receiver-----------------\n\n");
-		printf("Number of frames received (START and END frames included): %d\n", stat.numFrameReceive);
-		printf("Number of frames repeated: %d\n", stat.numFrameRepeat);
-		printf("Number of rejects received: %d\n", stat.numREJReceive);
-	}
-
-	return 0;
+  	return 0;
 }
