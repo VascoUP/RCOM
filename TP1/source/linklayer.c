@@ -20,9 +20,9 @@ static int build_frame_i(char address, int sequence_number, unsigned char **data
 
 void atende() {
     if( ++counter == ll.numTransmissions )
-        printf("\n\n-----------\nDisconnected\n-----------\n\n");
+        printf("-----------\nDisconnected\n-----------\n");
     else
-        printf("\n\n---------\nResending\n---------\n\n");
+        printf("---------\nResending\n---------\n");
     incTimeOut();
     flag = 1;
 }
