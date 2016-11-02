@@ -147,18 +147,30 @@ unsigned char* build_control_packet( unsigned int control, int file_size, char *
 
     unsigned char *packet = malloc(*length * sizeof(unsigned char));
     if( packet == NULL ) {
-        printf("build_control_packet:: Error allocing memory\n");
+        printf("build_control_packet:: Error allocating memory\n");
         return NULL;
     }
+    
+    int fs_length = 0;
+    int x = file_size;
+    while (x != 0) {
+    	x >>= 8;
+    	fs_length++;
+    }
+    printf("fs_length=%d\n", fs_length);
 
     packet[0] = control;
     packet[1] = 0;
-    packet[2] = 2;
-    packet[4] = file_size;
-    packet[3] = file_size >> 8;
-    packet[5] = 1;
-    packet[6] = fn_length;
-    memcpy(packet + 7, file_name, fn_length);
+    packet[2] = fs_length;
+    
+    int i;
+    for (i = 0; i < fs_length; i++) {
+    	packet[3+fs_length-1-i] = file_size >> (i*8);
+    } 
+    
+    packet[3+fs_length] = 1;
+    packet[3+fs_length+1] = fn_length;
+    memcpy(packet + 3+fs_length+2, file_name, fn_length);
 
     return packet;
 }
