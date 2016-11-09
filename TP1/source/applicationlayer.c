@@ -311,11 +311,11 @@ void send_file(applicationLayer app, char *file) {
 int handler_read( unsigned char* data, int length, applicationLayer* app ) {
     unsigned int type = (unsigned int) data[0];
     if( type == DATA_PACKET ) {
-        int length = unpack_data_packet(&data, app->sequence_number);
-        if( length != -1 ) {
+        int n_length = unpack_data_packet(&data, app->sequence_number);
+        if( n_length != -1 ) {
             app->sequence_number >= 255 ? app->sequence_number = 0 : app->sequence_number++;
-            app->info->read_size += length;
-            write_file(app->info->fd, data, length);
+            app->info->read_size += n_length;
+            write_file(app->info->fd, data, n_length);
         }
 
         return DATA_PACKET;       //Informs the function receive_file that it receives an data packet
@@ -327,13 +327,13 @@ int handler_read( unsigned char* data, int length, applicationLayer* app ) {
         fileInfo info2;
         //If it didn't receive the necessary information
         return ( unpack_control_packet( data, length, &info2 ) == -1 ||
-            //If any information is wrong
-            strcmp(info2.file_name, app->info->file_name) != 0 ||
-            info2.size != app->info->size ||
-			info2.permission != app->info->permission ||
-			info2.m_time != app->info->m_time ||
-            //It didn't read the start packet already
-            app->info->file_name == NULL ) ? -1 : END_PACKET;
+            	//If any information is wrong
+		strcmp(info2.file_name, app->info->file_name) != 0 ||
+		info2.size != app->info->size ||
+		info2.permission != app->info->permission ||
+		info2.m_time != app->info->m_time ||
+            	//It didn't read the start packet already
+            	app->info->file_name == NULL ) ? -1 : END_PACKET;
     }
 
     printf("handler_read:: Didnt receive any of the possible types of packets\n");
