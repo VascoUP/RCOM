@@ -6,6 +6,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #define MAX_LENGTH 		256           //File name maximum size
 
@@ -30,9 +31,11 @@ typedef struct {
   int numTransmissions;         //Maximum number of transmissions
   int timeout;                  //Time out
   int baudrate;                 //Baudrate
-}transmitterInfo;
+}Information;
+
+Information info;
 
 //Gets the information from terminal
-void getInformationTransmitter();
+void getInformationInterface(char* status);
 
 #endif

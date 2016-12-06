@@ -1,8 +1,6 @@
 #include "interface.h"
 
-transmitterInfo transmitter;
-
-void getInformationTransmitter(){
+void getInformationInterface(char* status){
 	//Serial port infomation
 	printf("\n-> Choose the serial port name:\n");
 	printf("0 - /dev/ttyS0\n1 - /dev/ttyS1\n");
@@ -20,53 +18,29 @@ void getInformationTransmitter(){
 		}
 	}
 
-	transmitter.port = answer;
+	info.port = answer;
 
-	//File information
-	char file[MAX_LENGTH];
-	printf("\n-> Write the file's name: ");
-	scanf("%s", file);
-	fflush(stdin);
+	if( strcmp(status, "transmitter") == 0){
+		//File information
+		char file[MAX_LENGTH];
+		printf("\n-> Write the file's name: ");
+		scanf("%s", file);
+		fflush(stdin);
 
-	strcpy(transmitter.fileName, file);
+		strcpy(info.fileName, file);
+	}
 
 	int maxLength;
 	printf("\n-> Choose the maximum length of I frame: ");
 	scanf("%d", &maxLength);
 	fflush(stdin);
-
 	while(maxLength < 0){
 		printf("\nYou need to choose a positive number: ");
 		scanf("%d", &maxLength);
 		fflush(stdin);
 	}
-
-	//File size
-	int file_size;
-	FILE *fp;
-	fp = fopen(file, "r");
-	fseek(fp, 0, SEEK_END);
-	file_size = ftell(fp);
-	rewind(fp);
-
-	//If maximum length of I frame is bigger than file size
-	if(file_size < maxLength){
-		while(file_size < maxLength){
-			printf("\nThe value needs to bo lower than %d, because %d is the file size...\n", file_size, file_size);
-			printf("\n-> Choose the maximum length of I frame: ");
-			scanf("%d", &maxLength);
-			fflush(stdin);
-
-			while(maxLength < 0){
-			printf("\nYou need to choose a positive number: ");
-			scanf("%d", &maxLength);
-			fflush(stdin);
-			}
-		}
-	}
-
-	fclose(fp);
-	transmitter.maxLengthTrama = maxLength;
+	
+	info.maxLengthTrama = maxLength;
 
 	//Time out
 	int timeout;
@@ -83,7 +57,7 @@ void getInformationTransmitter(){
 	if(timeout == 0)
 		timeout = DEFAULT_TIMEOUT;
 
-	transmitter.timeout = timeout;
+	info.timeout = timeout;
 
 	//Maximum number of transmissions
 	int numTransmissions;
@@ -101,7 +75,7 @@ void getInformationTransmitter(){
 	if(numTransmissions == 0)
 		numTransmissions = DEFAULT_NUMTRANS;
 
-	transmitter.numTransmissions = numTransmissions;
+	info.numTransmissions = numTransmissions;
 
 	//Baudrate
 	int baudrate;
@@ -116,7 +90,7 @@ void getInformationTransmitter(){
     	scanf("%d", &baudrate);
     	fflush(stdin);
   	}
-  
+
 	switch (baudrate) {
    		case 0:
       		baudrate = BAUDRATE_1200;
@@ -144,9 +118,5 @@ void getInformationTransmitter(){
 			break;
 	}
 
-	transmitter.baudrate = baudrate;
-}
-
-transmitterInfo getTransmitterInfo() {
-  return transmitter;
+	info.baudrate = baudrate;
 }
