@@ -1,36 +1,19 @@
-#include <string.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#define FTP 			"ftp://"
-#define FTP_SIZE 		6
-
-#define STR_CHAR_SIZE 		2
-
-#define DEFAULT_USER 		"anonymous"
-#define DEFAULT_PASSWORD 	"mail@domain"
-
-#define PORT 21
-
-typedef struct {
-	char* name;
-	char* password;
-	char* pathname;
-	char* filename;
-	char* host;
-} urlInfo;
+#include "parser.h"
 
 urlInfo* parser(char * url){
 	urlInfo *info = malloc(sizeof(urlInfo));
+	
 	const char stop[STR_CHAR_SIZE] = ":";
 	const char at[STR_CHAR_SIZE] = "@";
 	const char bar[STR_CHAR_SIZE] = "/";
 
+	//To see if the url begins with ftp://
 	if(strncmp(url, FTP, FTP_SIZE) != 0) {
 		perror("ftp:// does not exist");
 		return NULL;
 	}
+	
+	//To obtain the username and password 
 	
 	if(strcmp(FTP, strtok(url, at)) == 0) {
 		strcpy(info->name, DEFAULT_USER);
@@ -46,12 +29,12 @@ urlInfo* parser(char * url){
 	}
 
 	memmove(url, url+strlen(info->password), strlen(url)-strlen(info->password));
-	info->host = strtok(url, bar);
+	info->host = strtok(url, bar); //To obtain the host name
 
 	memmove(url, url+strlen(info->host), strlen(url)-strlen(info->host));
-	info->pathname = strtok(url, bar);
+	info->pathname = strtok(url, bar); //To obtain the path name
 	
-	memmove(info->filename, url+strlen(info->pathname), strlen(url)-strlen(info->pathname));
+	memmove(info->filename, url+strlen(info->pathname), strlen(url)-strlen(info->pathname)); //To obtain the file name
 
 	return info;
 }
