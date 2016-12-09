@@ -20,7 +20,7 @@
 #define PASSWORD 	"PASS "		/** @brief Password's macro */
 #define PASV 		"PASV "     /** @brief Passive mode's macro */
 #define RETR 		"RETR "     /** @brief Retrieve's macro */
-#define RETR 		"QUIT "		/** @brief Quit's macro */
+#define QUIT 		"QUIT "		/** @brief Quit's macro */
 
 #define MODE		0777		/** @brief Oppening file's mode */
 #define PORT 		21			/** @brief Port's number */
