@@ -10,6 +10,6 @@ FTPClient.o: FTPClient.c
 
 parser.o: parser.c
 	$(CC) -c parser.c $(CFLAGS)
-	
+
 clean: 
 	rm *o
