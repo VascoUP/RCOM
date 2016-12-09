@@ -102,7 +102,7 @@ int FTPlogout(int socketFD);
 	@param info Struct with the URL's information
 	@return 0 if everything is correct, 1 if it doesn't
 */
-int FTPdownload(int socketFD, urlInfo info);
+int FTPdownload(int socketFD, urlInfo *info);
 
 /**
 	@brief This is the main function

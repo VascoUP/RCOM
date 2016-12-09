@@ -27,4 +27,4 @@ typedef struct {
 	@param url URL to be parsed
 	@return The struct with the URL's information
 */
-int parser(char* url, urlInfo info);
+urlInfo* parser(char* url);
