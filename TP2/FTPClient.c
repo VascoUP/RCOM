@@ -39,7 +39,7 @@ int connectSocket(char* IP, int port){
 }
 
 char* createCMD(char* cmd, char* value){
-	char command[MAX_SIZE];
+	char* command = (char*)malloc(sizeof(char)*MAX_SIZE);
 
 	strcpy(command, cmd);
 	strcat(command, value);
@@ -139,7 +139,7 @@ int FTPret(int socketFD, char* path) {
 
     printf("Retrieving file...\n");
 
-    if (write(socketFD, retCMD, length(retCMD)) == -1) {
+    if (write(socketFD, retCMD, strlen(retCMD)) == -1) {
 		perror("Error retrieving file");
 		exit(1);
     }
@@ -161,7 +161,7 @@ int FTPlogout(int socketFD){
 
     printf("Quitting...\n");
 
-    if (write(socketFD, quitCMD, length(quitCMD)) == -1) {
+    if (write(socketFD, quitCMD, strlen(quitCMD)) == -1) {
 		perror("Error retrieving stopping the connection");
 		exit(1);
     }
@@ -186,9 +186,7 @@ int FTPdownload(int socketFD, urlInfo info) {
     int port, dataSocket, fileDescriptor, readBytes;
     char address[MAX_SIZE], buffer[MAX_SIZE];
 
-	info* information;
-
-    information = FTPpasv(socketFD);
+	info* information = FTPpasv(socketFD);
 	port = information->port;
 	address = information->address;
 
@@ -226,7 +224,7 @@ int main(int argc, char** argv) {
     int socketFD;
     urlInfo info;
 
-    if ((info = parse(argv[1])) == NULL) {
+    if ((info = parser(argv[1])) == NULL) {
 		perror("Error parsing URL");
         exit(1);
     }
