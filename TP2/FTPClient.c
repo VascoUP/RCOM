@@ -223,19 +223,19 @@ int FTPdownload(int socketFD, urlInfo infoUrl) {
 int main(int argc, char** argv) {
     char *IP, message[MAX_SIZE];
     int socketFD;
-    urlInfo *info;
+    urlInfo info;
 
-    if ((info = parser(argv[1])) == NULL) {
+    if (parser(argv[1], info) != 0) {
 		perror("Error parsing URL");
         exit(1);
     }
 
-    printf("\nUser: %s\nPassword: %s\nPath: %s\nHost: %s\nFile name: %s\n\n", 
-					info->name, info->password, 
-					info->pathname, info->host, info->filename);
+    printf("\nUser: %s\nPassword: %s\nPath: %s\nHost: %s\nFile name: %s\n\n",
+					info.name, info.password,
+					info.pathname, info.host, info.filename);
 
 
-    if ((IP = getHostIP(info->host)) == NULL ) {
+    if ((IP = getHostIP(info.host)) == NULL ) {
 		perror("Error getting IP address");
         exit(1);
     }
@@ -255,10 +255,10 @@ int main(int argc, char** argv) {
 
     printf("Received message: %s\n", message);
 
-    if (FTPlogin(socketFD, info->name, info->password)) {
+    if (FTPlogin(socketFD, info.name, info.password)) {
 		//FTPlogin has already a error message
         exit(-1);
     }
 
-    return FTPdownload(socketFD, *info);
+    return FTPdownload(socketFD, info);
 }

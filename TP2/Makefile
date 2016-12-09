@@ -1,8 +1,8 @@
 CC=gcc
 CFLAGS=-Wall -g
 
-client: FTPClient.o parser.o
-	$(CC) -o client FTPClient.o parser.o $(CFLAGS)
+download: FTPClient.o parser.o
+	$(CC) -o download FTPClient.o parser.o $(CFLAGS)
 	make clean
 
 FTPClient.o: FTPClient.c
@@ -11,5 +11,5 @@ FTPClient.o: FTPClient.c
 parser.o: parser.c
 	$(CC) -c parser.c $(CFLAGS)
 
-clean: 
+clean:
 	rm *o
