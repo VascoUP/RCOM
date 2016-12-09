@@ -102,11 +102,11 @@ int FTPlogin(int socketFD, char* username, char* password) {
 info* FTPpasv(int socketFD) {
     char buffer[MAX_SIZE];
     int ip1, ip2, ip3, ip4, port1, port2;
-	info* information;
+    info* information = malloc(sizeof(info));
 
     printf("Entering passive mode...\n");
 
-	char *pasvCMD = createCMD(PASV, "");
+    char *pasvCMD = createCMD(PASV, "");
 
     if (write(socketFD, pasvCMD, strlen(pasvCMD)) == -1) {
         perror("Error with the passive mode");
@@ -122,10 +122,10 @@ info* FTPpasv(int socketFD) {
 
     sscanf(buffer, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d).\n", &ip1, &ip2, &ip3, &ip4, &port1, &port2);
 
-	char* address;
+    char address[MAX_SIZE];
     sprintf(address, "%d.%d.%d.%d", ip1, ip2, ip3, ip4);
 
-	strcpy(information->address, address);
+    strcpy(information->address, address);
 
     information->port = (256 * port1) + port2;
 
@@ -182,13 +182,14 @@ int FTPlogout(int socketFD){
     return 0;
 }
 
-int FTPdownload(int socketFD, urlInfo info) {
+int FTPdownload(int socketFD, urlInfo infoUrl) {
     int port, dataSocket, fileDescriptor, readBytes;
-    char address[MAX_SIZE], buffer[MAX_SIZE];
+    char buffer[MAX_SIZE];
+    char *address;
 
-	info* information = FTPpasv(socketFD);
-	port = information->port;
-	address = information->address;
+    info* information = FTPpasv(socketFD);
+    port = information->port;
+    address = information->address;
 
     printf("IP address: %s\n Port: %d\n", address, port);
 
@@ -198,14 +199,14 @@ int FTPdownload(int socketFD, urlInfo info) {
          exit(-1);
     }
 
-    if (FTPret(socketFD, info.pathname) == -1) {
+    if (FTPret(socketFD, infoUrl.pathname) == -1) {
 		//FTPret has a perror already in case of error
         exit(-1);
     }
 
-    if ((fileDescriptor = open(info.filename, O_CREAT | O_WRONLY | O_TRUNC, MODE)) == -1) // MODE = 0777
+    if ((fileDescriptor = open(infoUrl.filename, O_CREAT | O_WRONLY | O_TRUNC, MODE)) == -1) // MODE = 0777
 	{
-        perror(info.filename);
+        perror(infoUrl.filename);
         exit(-1);
     }
 
@@ -220,19 +221,21 @@ int FTPdownload(int socketFD, urlInfo info) {
 }
 
 int main(int argc, char** argv) {
-    char IP[MAX_SIZE], message[MAX_SIZE];
+    char *IP, message[MAX_SIZE];
     int socketFD;
-    urlInfo info;
+    urlInfo *info;
 
     if ((info = parser(argv[1])) == NULL) {
 		perror("Error parsing URL");
         exit(1);
     }
 
-    printf("\nUser: %s\nPassword: %s\nPath: %s\nHost: %s\nFile name: %s\n\n", info.name, info.password, info.pathname, info.host, info.filename);
+    printf("\nUser: %s\nPassword: %s\nPath: %s\nHost: %s\nFile name: %s\n\n", 
+					info->name, info->password, 
+					info->pathname, info->host, info->filename);
 
 
-    if ((IP = getHostIP(info.host)) == NULL ) {
+    if ((IP = getHostIP(info->host)) == NULL ) {
 		perror("Error getting IP address");
         exit(1);
     }
@@ -252,10 +255,10 @@ int main(int argc, char** argv) {
 
     printf("Received message: %s\n", message);
 
-    if (FTPlogin(socketFD, info.name, info.password)) {
+    if (FTPlogin(socketFD, info->name, info->password)) {
 		//FTPlogin has already a error message
         exit(-1);
     }
 
-    return FTPdownload(socketFD, info);
+    return FTPdownload(socketFD, *info);
 }
