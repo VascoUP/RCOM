@@ -11,7 +11,6 @@ urlInfo* parser(char * url){
 		perror("ftp:// does not exist");
 		return NULL;
 	}
-
 	//To obtain the username and password
 	if(strlen(strtok(url, at)) == strlen(url)) {
 		info->name = DEFAULT_USER;
