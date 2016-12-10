@@ -2,6 +2,7 @@
 
 char *getHostIP(char* host){
 	struct hostent *h = gethostbyname(host);
+	printf("\nHost functio getHostIP: %s\n\n", host);
 	if (h == NULL) {
 		herror("gethostbyname");
 		return NULL;
@@ -223,20 +224,19 @@ int FTPdownload(int socketFD, urlInfo* infoUrl) {
 int main(int argc, char** argv) {
     char *IP, message[MAX_SIZE];
     int socketFD;
-    urlInfo *info;
+    urlInfo *info = malloc(sizeof(urlInfo));
 
     if ((info = parser(argv[1])) == NULL) {
-		perror("Error parsing URL");
+				perror("Error parsing URL");
         exit(1);
     }
 
-    printf("\nUser: %s\nPassword: %s\nPath: %s\nHost: %s\nFile name: %s\n\n",
+    printf("\nUser: %s\nPassword: %s\nHost: %s\nPath: %s\nFile name: %s\n\n",
 					info->name, info->password,
-					info->pathname, info->host, info->filename);
-
+					info->host, info->pathname, info->filename);
 
     if ((IP = getHostIP(info->host)) == NULL ) {
-		perror("Error getting IP address");
+				perror("Error getting IP address");
         exit(1);
     }
 
