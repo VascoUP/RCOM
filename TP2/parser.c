@@ -7,8 +7,6 @@ urlInfo* parser(char * url){
 	const char bar[STR_CHAR_SIZE] = "/";
 	char current[strlen(url)];
 	strcpy(current, url);
-	printf("1 - URL : %s\n", url);
-	printf("1 - URL COPY : %s\n", current);
 
 	//To see if the url begins with ftp://
 	if(strncmp(url, FTP, FTP_SIZE) != 0) {
@@ -60,7 +58,7 @@ urlInfo* parser(char * url){
 		info->filename = url;
 	}
 
-	else {		
+	else {
 
 		memmove(url, url+FTP_SIZE, strlen(url)-FTP_SIZE);
 		url[strlen(url)-FTP_SIZE] = 0;
@@ -120,6 +118,8 @@ urlInfo* parser(char * url){
 		info->filename = url;
 	}
 
+	strcat(info->pathname, bar);
+	strcat(info->pathname, info->filename);
 	printf("User: %s - Pass: %s - Host: %s - Path: %s - File: %s\n", info->name, info->password, info->host, info->pathname, info->filename);
 	return info;
 }

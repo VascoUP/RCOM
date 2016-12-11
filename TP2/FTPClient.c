@@ -1,8 +1,7 @@
 #include "FTPClient.h"
 
-char *getHostIP(char* host){
+char* getHostIP(char* host){
 	struct hostent *h = gethostbyname(host);
-	printf("\nHost functio getHostIP: %s\n\n", host);
 	if (h == NULL) {
 		herror("gethostbyname");
 		return NULL;
@@ -42,8 +41,10 @@ int connectSocket(char* IP, int port){
 char* createCMD(char* cmd, char* value){
 	char* command = (char*)malloc(sizeof(char)*MAX_SIZE);
 
-	strcpy(command, cmd);
-	strcat(command, value);
+	if(sprintf(command, "%s %s\r\n", cmd, value) < 0){
+		perror("Sprintf failed");
+		return NULL;
+	}
 
 	return command;
 }
@@ -79,7 +80,12 @@ int FTPlogin(int socketFD, char* username, char* password) {
         exit(1);
     }
 
-    printf("Username -> Message received: %s\n", buffer);
+		if(strncmp(buffer, "230", 3) != 0 && strncmp(buffer, "331", 3) != 0){
+			perror("Message received with the wrong code");
+			exit(1);
+		}
+
+    printf("%s\n", buffer);
 
 	//if the username was correct we need to send the password
     char* passCMD = createCMD(PASSWORD, password);
@@ -95,15 +101,20 @@ int FTPlogin(int socketFD, char* username, char* password) {
 		perror("Error receiving the respective message -> RECV error");
         exit(1);
 	}
-    printf("Password -> Message received: %s\n", buffer);
+
+	if(strncmp(buffer, "230", 3) != 0 && strncmp(buffer, "202", 3) != 0){
+		perror("Message received with the wrong code");
+		exit(1);
+	}
+
+    printf("%s\n", buffer);
 
     return 0;
 }
 
-info* FTPpasv(int socketFD) {
+int FTPpasv(int socketFD, char* address) {
     char buffer[MAX_SIZE];
     int ip1, ip2, ip3, ip4, port1, port2;
-    info* information = malloc(sizeof(info));
 
     printf("Entering passive mode...\n");
 
@@ -111,26 +122,34 @@ info* FTPpasv(int socketFD) {
 
     if (write(socketFD, pasvCMD, strlen(pasvCMD)) == -1) {
         perror("Error with the passive mode");
-        exit(-1);
+        exit(1);
     }
 
     if (receivedMessage(socketFD, buffer, MAX_SIZE) == -1) {
 	perror("Error receiving the respective message -> RECV error");
-        exit(0);
+        exit(1);
     }
 
-    printf("Passive Mode -> Message recieved: %s", buffer);
+		if(strncmp(buffer, "227", 3) != 0){
+			perror("Message received with the wrong code");
+			exit(1);
+		}
 
-    sscanf(buffer, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d).\n", &ip1, &ip2, &ip3, &ip4, &port1, &port2);
+    printf("%s\n", buffer);
 
-    char address[MAX_SIZE];
-    sprintf(address, "%d.%d.%d.%d", ip1, ip2, ip3, ip4);
+    if(sscanf(buffer, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d).\n", &ip1, &ip2, &ip3, &ip4, &port1, &port2) != 6){
+			perror("sscanf error");
+			exit(1);
+		}
 
-    strcpy(information->address, address);
+    if(sprintf(address, "%d.%d.%d.%d", ip1, ip2, ip3, ip4) < 0){
+			perror("sprintf error");
+			exit(1);
+		}
 
-    information->port = (256 * port1) + port2;
+    int port = (256 * port1) + port2;
 
-    return information;
+    return port;
 }
 
 int FTPret(int socketFD, char* path) {
@@ -150,7 +169,12 @@ int FTPret(int socketFD, char* path) {
         exit(1);
     }
 
-    printf("Retrieving -> Message received: %s", buffer);
+		if(strncmp(buffer, "150", 3) != 0){
+			perror("Message received with the wrong code");
+			exit(1);
+		}
+
+    printf("%s", buffer);
 
     return 0;
 }
@@ -172,7 +196,12 @@ int FTPlogout(int socketFD){
         exit(1);
     }
 
-    printf("Quitting -> Message received: %s", buffer);
+		if(strncmp(buffer, "226", 3) != 0){
+			perror("Message received with the wrong code");
+			exit(1);
+		}
+
+    printf("%s\n", buffer);
 
 	if(close(socketFD) == -1)
 	{
@@ -185,16 +214,14 @@ int FTPlogout(int socketFD){
 
 int FTPdownload(int socketFD, urlInfo* infoUrl) {
     int port, dataSocket, fileDescriptor, readBytes;
-    char buffer[MAX_SIZE];
-    char *address;
+    char bufferMsg[MAX_SIZE];
+    char address[MAX_SIZE];
 
-    info* information = FTPpasv(socketFD);
-    port = information->port;
-    address = information->address;
+    port = FTPpasv(socketFD, address);
 
     printf("IP address: %s\n Port: %d\n", address, port);
 
-	dataSocket = connectSocket(address, port);
+		dataSocket = connectSocket(address, port);
     if (dataSocket == -1) {
 		//connectSocket has a perror already in case of error
          exit(-1);
@@ -205,19 +232,20 @@ int FTPdownload(int socketFD, urlInfo* infoUrl) {
         exit(-1);
     }
 
-    if ((fileDescriptor = open(infoUrl->filename, O_CREAT | O_WRONLY | O_TRUNC, MODE)) == -1) // MODE = 0777
-	{
+    if ((fileDescriptor = open(infoUrl->filename, O_CREAT | O_WRONLY | O_TRUNC, MODE)) == -1) // MODE = 0666
+		{
         perror(infoUrl->filename);
         exit(-1);
     }
 
-    while ( (readBytes = read(dataSocket, buffer, MAX_SIZE)) > 0 ) {
-        if (write(fileDescriptor, buffer, readBytes) == -1) {
+    while ( (readBytes = read(dataSocket, bufferMsg, MAX_SIZE)) > 0 ) {
+        if (write(fileDescriptor, bufferMsg, readBytes) < 0) {
             perror("Error writing to file");
             exit(-1);
         }
     }
 
+		close(fileDescriptor);
     return FTPlogout(socketFD);
 }
 
@@ -253,7 +281,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    printf("Received message: %s\n", message);
+    printf("%s\n", message);
 
     if (FTPlogin(socketFD, info->name, info->password)) {
 		//FTPlogin has already a error message

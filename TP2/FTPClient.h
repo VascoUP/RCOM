@@ -16,29 +16,21 @@
 
 #define MAX_SIZE 	256			/** @brief Buffer's maximum size */
 
-#define USER 		"USER "		/** @brief User's macro */
-#define PASSWORD 	"PASS "		/** @brief Password's macro */
-#define PASV 		"PASV "     /** @brief Passive mode's macro */
-#define RETR 		"RETR "     /** @brief Retrieve's macro */
-#define QUIT 		"QUIT "		/** @brief Quit's macro */
+#define USER 		"USER"		/** @brief User's macro */
+#define PASSWORD 	"PASS"		/** @brief Password's macro */
+#define PASV 		"PASV"     /** @brief Passive mode's macro */
+#define RETR 		"RETR"     /** @brief Retrieve's macro */
+#define QUIT 		"QUIT"		/** @brief Quit's macro */
 
 #define MODE		0777		/** @brief Oppening file's mode */
 #define PORT 		21			/** @brief Port's number */
-
-/**
-	@brief Struct with information to be used in the functions
-*/
-typedef struct{
-	int port;		/** @brief Port's number */
-	char* address;	/** @brief Address used */
-}info;
 
 /**
 	@brief Function to get the host's IP address
 	@param host Host of the connection's address
 	@return The respective IP address
 */
-char *getHostIP(char* host);
+char* getHostIP(char* host);
 
 /**
 	@brief It connects the sockets
@@ -79,7 +71,7 @@ int FTPlogin(int socketFD, char* username, char* password);
 	@param socketFD Socket's descriptor
 	@return A struct with port's number and address information
 */
-info* FTPpasv(int socketFD);
+int FTPpasv(int socketFD, char* address);
 
 /**
 	@brief Function which implements the retrieve command
