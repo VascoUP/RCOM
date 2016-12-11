@@ -8,6 +8,8 @@
 
 #define STR_CHAR_SIZE 		2 				/** @brief Char's size */
 
+#define STR_MAX_LEN		256
+
 #define DEFAULT_USER 		"anonymous" 	/** @brief default user */
 #define DEFAULT_PASSWORD 	"mail@domain" 	/** @brief default password */
 
