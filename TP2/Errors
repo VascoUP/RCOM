@@ -1,8 +1,0 @@
-1 - Provavelmente está a haver um problema com o memmove, porque ele faz memmove(url, url+FTP_SIZE, strlen(url)-FTP_SIZE) e dá porcaria
-
-2 - Tem também um erro no parser, porque quando faço o print das informações recolhidas do url quando estou nos sockets, ou seja depois de chamar
-a função parser ele diz que o host é "pub", e já fiz prints no parser e quando leio o host ele diz que é "ftp.up.pt", mas depois de ler o pathname, ele já
-me diz que host = "pub".... O problema inicia-se a partir da linha 36, provavelmente o problema é com o strtok... Se eu criar sempre uma string auxiliar
-à medida que vou lendo os parâmetros, o erro já não acontece, mas assim o código não está muito eficiente
-
-3 - O host que chega à função getHostIP está todo errado (mesmo quando o host lido do parser é o certo)

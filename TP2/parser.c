@@ -120,6 +120,6 @@ urlInfo* parser(char * url){
 
 	strcat(info->pathname, bar);
 	strcat(info->pathname, info->filename);
-	printf("User: %s - Pass: %s - Host: %s - Path: %s - File: %s\n", info->name, info->password, info->host, info->pathname, info->filename);
+	
 	return info;
 }

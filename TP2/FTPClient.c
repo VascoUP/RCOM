@@ -174,7 +174,7 @@ int FTPret(int socketFD, char* path) {
 			exit(1);
 		}
 
-    printf("%s", buffer);
+    printf("%s\n", buffer);
 
     return 0;
 }
@@ -219,7 +219,7 @@ int FTPdownload(int socketFD, urlInfo* infoUrl) {
 
     port = FTPpasv(socketFD, address);
 
-    printf("IP address: %s\n Port: %d\n", address, port);
+    printf("IP address: %s\nPort: %d\n\n", address, port);
 
 		dataSocket = connectSocket(address, port);
     if (dataSocket == -1) {
@@ -259,7 +259,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    printf("\nUser: %s\nPassword: %s\nHost: %s\nPath: %s\nFile name: %s\n\n",
+    printf("\nUser: %s\nPassword: %s\nHost: %s\nPath: %s\nFile name: %s\n",
 					info->name, info->password,
 					info->host, info->pathname, info->filename);
 
