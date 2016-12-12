@@ -200,7 +200,7 @@ int FTPlogout(int socketFD){
 
     printf("%s\n", buffer);
 
-    if(strncmp(buffer, "226", 3) != 0){
+    if(strncmp(buffer, closeData, strlen(closeData)) != 0){
 				perror("Quit message with the wrong code");
 				exit(-1);
     }
