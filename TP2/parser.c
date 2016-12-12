@@ -2,10 +2,13 @@
 
 urlInfo* parser(char * url){
 	urlInfo *info = malloc(sizeof(urlInfo));
+
+	//Characters which separates the url's different parts
 	const char stop[STR_CHAR_SIZE] = ":";
 	const char at[STR_CHAR_SIZE] = "@";
 	const char bar[STR_CHAR_SIZE] = "/";
-	char current[strlen(url)];
+
+	char current[strlen(url)]; //url's copy
 	strcpy(current, url);
 
 	//To see if the url begins with ftp://
@@ -14,42 +17,44 @@ urlInfo* parser(char * url){
 		return NULL;
 	}
 
+	//To start parsing the url after ftp://
 	memmove(url, url+FTP_SIZE, strlen(url)-FTP_SIZE);
 	url[strlen(url)-FTP_SIZE] = 0;
 
 	strcpy(current, url);
 
-	//To obtain the username and password
+	//To obtain the username, password and host -> In this case the username and password aren't a part of the url
 	if(strlen(strtok(current, at)) == strlen(url)) {
+		//Username and password
 		info->name = DEFAULT_USER;
 		info->password= DEFAULT_PASSWORD;
 
-		// Host
+		//Host
 		info->host = malloc( STR_MAX_LEN );
 		strcpy(info->host, strtok(current, bar));
 
-		memmove(url, url+(strlen(info->host)+1), strlen(url)-(strlen(info->host)+1)); //Mais 1 e menos 1 para contar com a barra
+		memmove(url, url+(strlen(info->host)+1), strlen(url)-(strlen(info->host)+1)); // Plus 1 because of '/'
 		url[strlen(url)-(strlen(info->host)+1)] = 0;
 
 		strcpy(current, url);
 	}
 
-	else {
+	else { //In case of username and password are a part of url
 
-		// Name
+		//Username
 		info->name = malloc( STR_MAX_LEN );
 		strcpy(info->name, strtok(current, stop));
 
-		memmove(url, url+strlen(info->name)+1, strlen(url)-strlen(info->name)-1); //Mais 1 e menos 1 para contar com a barra
+		memmove(url, url+strlen(info->name)+1, strlen(url)-strlen(info->name)-1); //Plus or minus 1 because of ':'
 		url[strlen(url)-strlen(info->name)-1] = 0;
 
 		strcpy(current, url);
 
-		// Password
+		//Password
 		info->password = malloc( STR_MAX_LEN );
 		strcpy(info->password, strtok(current, at));
 
-		memmove(url, url+strlen(info->password)+1, strlen(url)-strlen(info->password)-1); //Mais 1 e menos 1 para contar com a barra
+		memmove(url, url+strlen(info->password)+1, strlen(url)-strlen(info->password)-1); //Plus or minus 1 because of '@'
 		url[strlen(url)-strlen(info->password)-1] = 0;
 
 		strcpy(current, url);
@@ -58,17 +63,17 @@ urlInfo* parser(char * url){
 		info->host = malloc( STR_MAX_LEN );
 		strcpy(info->host, strtok(current, bar));
 
-		memmove(url, url+(strlen(info->host)+1), strlen(url)-(strlen(info->host)+1)); //Mais 1 e menos 1 para contar com a barra
+		memmove(url, url+(strlen(info->host)+1), strlen(url)-(strlen(info->host)+1)); //Plus 1 because of '/'
 		url[strlen(url)-(strlen(info->host)+1)] = 0;
 
 		strcpy(current, url);
 	}
 
-	// Pathname
+	//Pathname
 	info->pathname = malloc( STR_MAX_LEN );
 	strcpy(info->pathname, current);
 
-	// File name
+	//Filename
 	char* strRes = strtok(current, bar);
 	int resLen = strlen(strRes);
 
@@ -81,6 +86,6 @@ urlInfo* parser(char * url){
 	}
 
 	info->filename = url;
-	
+
 	return info;
 }

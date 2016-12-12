@@ -14,16 +14,16 @@
 
 #include "parser.h"
 
-#define MAX_SIZE 	256			/** @brief Buffer's maximum size */
+#define MAX_SIZE 	  256			  /** @brief Buffer's maximum size */
 
-#define USER 		"USER"		/** @brief User's macro */
-#define PASSWORD 	"PASS"		/** @brief Password's macro */
-#define PASV 		"PASV"     /** @brief Passive mode's macro */
-#define RETR 		"RETR"     /** @brief Retrieve's macro */
-#define QUIT 		"QUIT"		/** @brief Quit's macro */
+#define USER 		    "USER"		/** @brief User's macro */
+#define PASSWORD 	  "PASS"		/** @brief Password's macro */
+#define PASV 		    "PASV"    /** @brief Passive mode's macro */
+#define RETR 		    "RETR"    /** @brief Retrieve's macro */
+#define QUIT 		    "QUIT"		/** @brief Quit's macro */
 
-#define MODE		0777		/** @brief Oppening file's mode */
-#define PORT 		21			/** @brief Port's number */
+#define MODE		    0777		  /** @brief Oppening file's mode */
+#define PORT 		    21			  /** @brief Port's default number */
 
 /**
 	@brief Function to get the host's IP address
