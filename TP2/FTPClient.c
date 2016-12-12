@@ -63,11 +63,15 @@ int receivedMessage(int socketFD, char *buffer, int size) {
 }
 
 int FTPlogin(int socketFD, char* username, char* password) {
-	char buffer[MAX_SIZE];
+    char buffer[MAX_SIZE];
+
+    printf("Username: %s\n", username);
+    printf("Password: %s\n", password);
 
 	//sending the username and waiting for a response
     char* userCMD = createCMD(USER, username);
 
+    printf("Username CMD: %s\n", userCMD);
     printf("Sending username...\n");
 
     if (write(socketFD, userCMD, strlen(userCMD)) == -1) {
@@ -75,21 +79,23 @@ int FTPlogin(int socketFD, char* username, char* password) {
         exit(1);
     }
 
+
 	if (receivedMessage(socketFD, buffer, MAX_SIZE) == -1) {
 		perror("Error receiving the respective message -> RECV error");
         exit(1);
     }
 
-		if(strncmp(buffer, "230", 3) != 0 && strncmp(buffer, "331", 3) != 0){
-			perror("Message received with the wrong code");
-			exit(1);
-		}
-
     printf("%s\n", buffer);
+
+    if(strncmp(buffer, "230", 3) != 0 && strncmp(buffer, "331", 3) != 0){
+	perror("Message received with the wrong code");
+	exit(1);
+    }
 
 	//if the username was correct we need to send the password
     char* passCMD = createCMD(PASSWORD, password);
 
+    printf("Password CMD: %s\n", passCMD);
     printf("Sending password...\n");
 
     if (write(socketFD, passCMD, strlen(passCMD)) == -1) {
@@ -98,16 +104,16 @@ int FTPlogin(int socketFD, char* username, char* password) {
     }
 
     if(receivedMessage(socketFD, buffer, MAX_SIZE) == -1){
-		perror("Error receiving the respective message -> RECV error");
+	perror("Error receiving the respective message -> RECV error");
         exit(1);
-	}
-
-	if(strncmp(buffer, "230", 3) != 0 && strncmp(buffer, "202", 3) != 0){
-		perror("Message received with the wrong code");
-		exit(1);
-	}
+    }
 
     printf("%s\n", buffer);
+
+    if(strncmp(buffer, "230", 3) != 0 && strncmp(buffer, "202", 3) != 0){
+	perror("Message received with the wrong code");
+	exit(1);
+    }
 
     return 0;
 }
@@ -130,12 +136,12 @@ int FTPpasv(int socketFD, char* address) {
         exit(1);
     }
 
-		if(strncmp(buffer, "227", 3) != 0){
-			perror("Message received with the wrong code");
-			exit(1);
-		}
-
     printf("%s\n", buffer);
+
+    if(strncmp(buffer, "227", 3) != 0){
+	perror("Message received with the wrong code");
+	exit(1);
+    }
 
     if(sscanf(buffer, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d).\n", &ip1, &ip2, &ip3, &ip4, &port1, &port2) != 6){
 			perror("sscanf error");
@@ -160,21 +166,21 @@ int FTPret(int socketFD, char* path) {
     printf("Retrieving file...\n");
 
     if (write(socketFD, retCMD, strlen(retCMD)) == -1) {
-		perror("Error retrieving file");
-		exit(1);
+	perror("Error retrieving file");
+	exit(1);
     }
 
     if (receivedMessage(socketFD, buffer, MAX_SIZE) == -1) {
-		perror("Error receiving the respective message -> RECV error");
+	perror("Error receiving the respective message -> RECV error");
         exit(1);
     }
 
-		if(strncmp(buffer, "150", 3) != 0){
-			perror("Message received with the wrong code");
-			exit(1);
-		}
-
     printf("%s\n", buffer);
+
+    if(strncmp(buffer, "150", 3) != 0){
+	perror("Message received with the wrong code");
+	exit(1);
+    }
 
     return 0;
 }
@@ -187,8 +193,8 @@ int FTPlogout(int socketFD){
     printf("Quitting...\n");
 
     if (write(socketFD, quitCMD, strlen(quitCMD)) == -1) {
-		perror("Error retrieving stopping the connection");
-		exit(1);
+	perror("Error retrieving stopping the connection");
+	exit(1);
     }
 
     if (receivedMessage(socketFD, buffer, MAX_SIZE) == -1) {
@@ -196,18 +202,17 @@ int FTPlogout(int socketFD){
         exit(1);
     }
 
-		if(strncmp(buffer, "226", 3) != 0){
-			perror("Message received with the wrong code");
-			exit(1);
-		}
-
     printf("%s\n", buffer);
 
-	if(close(socketFD) == -1)
-	{
-		perror("Error closing socket");
-		return 1;
-	}
+    if(strncmp(buffer, "226", 3) != 0){
+	perror("Message received with the wrong code");
+	exit(1);
+    }
+
+    if(close(socketFD) == -1) {
+	perror("Error closing socket");
+	return 1;
+    }
 
     return 0;
 }
