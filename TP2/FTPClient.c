@@ -24,13 +24,13 @@ int connectSocket(char* IP, int port){
 		/*open an TCP socket*/
 		if ((socketfd = socket(AF_INET,SOCK_STREAM,0)) < 0){
     		perror("socket() error");
-        exit(1);
+        exit(-1);
     }
 
 		/*connect to the server*/
     if(connect(socketfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
         perror("connect() error");
-				exit(1);
+				exit(-1);
 		}
 
 		return socketfd;
@@ -78,14 +78,14 @@ int FTPlogin(int socketFD, char* username, char* password) {
 
 
 	if (receivedMessage(socketFD, buffer, MAX_SIZE) == -1) {
-				perror("Error receiving the respective message -> RECV error");
+				perror("Error receiving the respective message");
         exit(-1);
     }
 
     printf("%s\n", buffer);
 
-    if(strncmp(buffer, "230", 3) != 0 && strncmp(buffer, "331", 3) != 0){
-				perror("Message received with the wrong code");
+    if(strncmp(buffer, userOK, strlen(userOK)) != 0 && strncmp(buffer, userLogged, strlen(userLogged)) != 0){
+				perror("User message with the wrong code");
 				exit(-1);
     }
 
@@ -100,14 +100,14 @@ int FTPlogin(int socketFD, char* username, char* password) {
     }
 
     if(receivedMessage(socketFD, buffer, MAX_SIZE) == -1){
-				perror("Error receiving the respective message -> RECV error");
+				perror("Error receiving the respective message");
         exit(-1);
     }
 
     printf("%s\n", buffer);
 
-    if(strncmp(buffer, "230", 3) != 0 && strncmp(buffer, "202", 3) != 0){
-				perror("Message received with the wrong code");
+    if(strncmp(buffer, userLogged, strlen(userLogged)) != 0 && strncmp(buffer, superfluous, strlen(superfluous)) != 0){
+				perror("Password message with the wrong code");
 				exit(-1);
     }
 
@@ -128,14 +128,14 @@ int FTPpasv(int socketFD, char* address) {
     }
 
     if (receivedMessage(socketFD, buffer, MAX_SIZE) == -1) {
-				perror("Error receiving the respective message -> RECV error");
+				perror("Error receiving the respective message");
         exit(-1);
     }
 
     printf("%s\n", buffer);
 
     if(strncmp(buffer, "227", 3) != 0){
-				perror("Message received with the wrong code");
+				perror("Passive mode message with the wrong code");
 				exit(-1);
     }
 
@@ -167,14 +167,14 @@ int FTPret(int socketFD, char* path) {
     }
 
     if (receivedMessage(socketFD, buffer, MAX_SIZE) == -1) {
-				perror("Error receiving the respective message -> RECV error");
+				perror("Error receiving the respective message");
         exit(-1);
     }
 
     printf("%s\n", buffer);
 
-    if(strncmp(buffer, "150", 3) != 0){
-				perror("Message received with the wrong code");
+    if(strncmp(buffer, fileOK, strlen(fileOK)) != 0){
+				perror("Ret message with the wtong code");
 				exit(-1);
     }
 
@@ -189,19 +189,19 @@ int FTPlogout(int socketFD){
     printf("Quitting...\n");
 
     if (write(socketFD, quitCMD, strlen(quitCMD)) == -1) {
-				perror("Error retrieving stopping the connection");
+				perror("Error stopping the connection");
 				exit(-1);
     }
 
     if (receivedMessage(socketFD, buffer, MAX_SIZE) == -1) {
-				perror("Error receiving the respective message -> RECV error");
+				perror("Error receiving the respective message");
         exit(-1);
     }
 
     printf("%s\n", buffer);
 
     if(strncmp(buffer, "226", 3) != 0){
-				perror("Message received with the wrong code");
+				perror("Quit message with the wrong code");
 				exit(-1);
     }
 
@@ -278,7 +278,7 @@ int main(int argc, char** argv) {
     }
 
     if (receivedMessage(socketFD, message, MAX_SIZE) == -1) {
-		perror("Error receiving message");
+				perror("Error receiving message");
         exit(-1);
     }
 

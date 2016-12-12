@@ -25,6 +25,17 @@
 #define MODE		    0777		  /** @brief Oppening file's mode */
 #define PORT 		    21			  /** @brief Port's default number */
 
+#define SIZE        4         /** @brief Command's size */
+
+//Values taken from rfc959-FTP
+//User: 331 and 230    Pass: 230 and 202   Pasv: 227   Ret: 150   Quit: 226
+const char userOK[SIZE] = "331";        /** @brief User name okay, need password */
+const char userLogged[SIZE] = "230";    /** @brief User logged in, proceed */
+const char superfluous[SIZE] = "202";   /** @brief Command not implemented, superfluous at this site */
+const char pasvMode[SIZE] = "227";      /** @brief Enetring passive mode */
+const char fileOK[SIZE] = "150";        /** @brief File status okay, about to open data connection */
+const char closeData[SIZE] = "226";     /** @brief Closing data connection */
+
 /**
 	@brief Function to get the host's IP address
 	@param host Host of the connection's address
@@ -69,7 +80,8 @@ int FTPlogin(int socketFD, char* username, char* password);
 /**
 	@brief Function which implements the passive mode
 	@param socketFD Socket's descriptor
-	@return A struct with port's number and address information
+  @param address Connection's address
+	@return The port's number
 */
 int FTPpasv(int socketFD, char* address);
 

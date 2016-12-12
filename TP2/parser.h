@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define FTP 							"ftp://" 				/** @brief The beggining of URL */
+#define FTP 							"ftp://"				/** @brief The beggining of URL */
+
 #define FTP_SIZE 					6 							/** @brief FTP's size */
 
 #define STR_CHAR_SIZE 		2 							/** @brief Char's size */
